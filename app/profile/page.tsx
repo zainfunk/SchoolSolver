@@ -3,7 +3,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { useMockAuth } from '@/lib/mock-auth'
-import { USERS, getClubsByMember, getClubsByAdvisor, getAttendanceByUserAndClub, getUserById } from '@/lib/mock-data'
+import { USERS, CLUBS, getClubsByMember, getClubsByAdvisor, getAttendanceByUserAndClub, getUserById } from '@/lib/mock-data'
+import { supabase } from '@/lib/supabase'
 import { setName, setEmail, applyOverrides } from '@/lib/user-store'
 import { getProfile, setProfile, SOCIAL_PLATFORMS, PersonalSocialLink } from '@/lib/profile-store'
 import { getAdminSettings } from '@/lib/settings-store'
@@ -95,14 +96,13 @@ export default function ProfilePage() {
 
   const isAdmin = currentUser.role === 'admin'
 
-  const [selectedUserId, setSelectedUserId] = useState(currentUser.id)
-  const [displayUsers, setDisplayUsers] = useState(() => USERS.map(applyOverrides))
+  // For admin browsing other (mock) users; own profile always uses real currentUser
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
+  const mockUsers = USERS.map(applyOverrides)
 
-  function refresh() { setDisplayUsers(USERS.map(applyOverrides)) }
-
-  const profileUser = isAdmin
-    ? (displayUsers.find((u) => u.id === selectedUserId) ?? displayUsers[0])
-    : displayUsers.find((u) => u.id === currentUser.id)!
+  const profileUser = isAdmin && selectedUserId
+    ? (mockUsers.find((u) => u.id === selectedUserId) ?? currentUser)
+    : currentUser
 
   const canEdit = isAdmin || profileUser.id === currentUser.id
   const isOwnProfile = profileUser.id === currentUser.id
@@ -117,12 +117,11 @@ export default function ProfilePage() {
 
   // ---- Name editing ----
   const [nameInput, setNameInput] = useState(profileUser.name)
-  useEffect(() => { setNameInput(applyOverrides(USERS.find((u) => u.id === profileUser.id)!).name) }, [profileUser.id])
+  useEffect(() => { setNameInput(profileUser.name) }, [profileUser.id])
   function saveName() {
     if (!nameInput.trim() || nameInput.trim() === profileUser.name) return
     setName(profileUser.id, nameInput.trim())
-    refresh()
-  }
+      }
 
   // ---- Email editing ----
   const [editingEmail, setEditingEmail] = useState(false)
@@ -130,8 +129,7 @@ export default function ProfilePage() {
   function saveEmail() {
     if (!emailInput.trim()) return
     setEmail(profileUser.id, emailInput.trim())
-    refresh()
-    setEditingEmail(false)
+        setEditingEmail(false)
   }
 
   // ---- Bio editing ----
@@ -156,8 +154,19 @@ export default function ProfilePage() {
   }
 
   // ---- Clubs & attendance ----
-  const memberClubs = profileUser.role === 'student' || profileUser.role === 'admin'
-    ? getClubsByMember(profileUser.id) : []
+  const [myClubIds, setMyClubIds] = useState<string[]>([])
+  useEffect(() => {
+    if (!profileUser.id) return
+    supabase.from('memberships').select('club_id').eq('user_id', profileUser.id).then(({ data }) => {
+      setMyClubIds((data ?? []).map((r) => r.club_id))
+    })
+  }, [profileUser.id])
+
+  const mockMemberClubs = getClubsByMember(profileUser.id)
+  const supabaseMemberClubs = CLUBS.filter((c) => myClubIds.includes(c.id))
+  const allMemberClubIds = new Set([...mockMemberClubs.map((c) => c.id), ...supabaseMemberClubs.map((c) => c.id)])
+  const memberClubs = CLUBS.filter((c) => allMemberClubIds.has(c.id))
+
   const advisingClubs = profileUser.role === 'advisor' || profileUser.role === 'admin'
     ? getClubsByAdvisor(profileUser.id) : []
   const displayClubs = profileUser.role === 'advisor' ? advisingClubs : memberClubs
@@ -227,7 +236,7 @@ export default function ProfilePage() {
             }}
             className="text-sm rounded-lg px-2 py-1 bg-white text-gray-700 cursor-pointer flex-1 border-0"
           >
-            {displayUsers.map((u) => (
+            {mockUsers.map((u) => (
               <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
             ))}
           </select>
