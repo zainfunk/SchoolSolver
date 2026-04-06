@@ -213,9 +213,9 @@ export default function ProfilePage() {
             value={selectedUserId}
             onChange={(e) => {
               setSelectedUserId(e.target.value)
-              setEditingName(false); setEditingEmail(false)
-              setEditingBio(false); setEditingSocials(false)
-              setEditingProfile(false); setTab('overview')
+              setEditingEmail(false)
+              setEditingSocials(false)
+              setTab('overview')
             }}
             className="text-sm rounded-lg px-2 py-1 bg-white text-gray-700 cursor-pointer flex-1 border-0"
           >
