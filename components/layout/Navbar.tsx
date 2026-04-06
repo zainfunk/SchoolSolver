@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useMockAuth } from '@/lib/mock-auth'
+import { Role } from '@/types'
 import { GraduationCap, LayoutDashboard, Calendar, FileText, Compass, User, ShieldCheck, MessageSquare, Settings } from 'lucide-react'
 import Avatar from '@/components/Avatar'
 import { HelpButton } from '@/components/HelpTour'
