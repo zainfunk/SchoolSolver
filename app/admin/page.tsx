@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useMockAuth } from '@/lib/mock-auth'
 import { CLUBS as INITIAL_CLUBS, USERS, SCHOOL_ELECTIONS as INITIAL_ELECTIONS } from '@/lib/mock-data'
+import { supabase } from '@/lib/supabase'
 import { Club, SchoolElection, PollCandidate } from '@/types'
 import RoleGuard from '@/components/layout/RoleGuard'
 import ClubForm from '@/components/admin/ClubForm'
@@ -21,6 +22,38 @@ export default function AdminPage() {
   const [clubs, setClubs] = useState<Club[]>(INITIAL_CLUBS)
   const [elections, setElections] = useState<SchoolElection[]>(INITIAL_ELECTIONS)
 
+  useEffect(() => {
+    // Load elections from Supabase
+    supabase.from('school_elections').select('*, election_candidates(*), election_votes(*)').then(({ data }) => {
+      if (data) setElections(data.map((e) => ({
+        id: e.id, positionTitle: e.position_title, description: e.description ?? '',
+        createdAt: e.created_at, isOpen: e.is_open,
+        candidates: (e.election_candidates as {user_id: string}[]).map((c) => ({
+          userId: c.user_id,
+          votes: (e.election_votes as {candidate_user_id: string; voter_user_id: string}[])
+            .filter((v) => v.candidate_user_id === c.user_id)
+            .map((v) => v.voter_user_id),
+        })),
+      })))
+    })
+    // Load clubs from Supabase
+    supabase.from('clubs').select('*').then(({ data }) => {
+      if (data) setClubs((prev) => {
+        const supaIds = new Set(data.map((c) => c.id))
+        const filtered = prev.filter((c) => supaIds.has(c.id))
+        for (const d of data) {
+          const idx = filtered.findIndex((c) => c.id === d.id)
+          if (idx >= 0) {
+            filtered[idx] = { ...filtered[idx], autoAccept: d.auto_accept, capacity: d.capacity, iconUrl: d.icon_url ?? filtered[idx].iconUrl, description: d.description ?? filtered[idx].description }
+          } else {
+            filtered.push({ id: d.id, name: d.name, description: d.description ?? '', iconUrl: d.icon_url ?? '', advisorId: d.advisor_id ?? '', memberIds: [], leadershipPositions: [], socialLinks: [], meetingTimes: [], tags: d.tags ?? [], eventCreatorIds: d.event_creator_ids ?? [], capacity: d.capacity, autoAccept: d.auto_accept ?? false, createdAt: d.created_at })
+          }
+        }
+        return filtered
+      })
+    })
+  }, [])
+
   // Election form state
   const [showElectionForm, setShowElectionForm] = useState(false)
   const [electionTitle, setElectionTitle] = useState('')
@@ -30,7 +63,7 @@ export default function AdminPage() {
   const advisors = USERS.filter((u) => u.role === 'advisor')
   const students = USERS.filter((u) => u.role === 'student')
 
-  function handleCreateClub(
+  async function handleCreateClub(
     data: Omit<Club, 'id' | 'memberIds' | 'leadershipPositions' | 'socialLinks' | 'meetingTimes' | 'createdAt'>
   ) {
     const newClub: Club = {
@@ -43,6 +76,12 @@ export default function AdminPage() {
       createdAt: new Date().toISOString().split('T')[0],
       autoAccept: false,
     }
+    await supabase.from('clubs').insert({
+      id: newClub.id, name: newClub.name, description: newClub.description,
+      icon_url: newClub.iconUrl, capacity: newClub.capacity,
+      advisor_id: newClub.advisorId || null, auto_accept: false,
+      tags: newClub.tags ?? [], event_creator_ids: [], created_at: newClub.createdAt,
+    })
     setClubs((prev) => [...prev, newClub])
   }
 
@@ -52,16 +91,19 @@ export default function AdminPage() {
     )
   }
 
-  function createElection() {
+  async function createElection() {
     if (!electionTitle.trim() || electionCandidateIds.length < 2) return
+    const elecId = `selec-${Date.now()}`
     const newElection: SchoolElection = {
-      id: `selec-${Date.now()}`,
+      id: elecId,
       positionTitle: electionTitle.trim(),
       description: electionDescription.trim(),
       candidates: electionCandidateIds.map((uid) => ({ userId: uid, votes: [] })),
       createdAt: new Date().toISOString(),
       isOpen: true,
     }
+    await supabase.from('school_elections').insert({ id: elecId, position_title: newElection.positionTitle, description: newElection.description, created_at: newElection.createdAt, is_open: true })
+    await supabase.from('election_candidates').insert(electionCandidateIds.map((uid) => ({ election_id: elecId, user_id: uid })))
     setElections((prev) => [...prev, newElection])
     setElectionTitle('')
     setElectionDescription('')
@@ -69,7 +111,8 @@ export default function AdminPage() {
     setShowElectionForm(false)
   }
 
-  function closeElection(id: string) {
+  async function closeElection(id: string) {
+    await supabase.from('school_elections').update({ is_open: false }).eq('id', id)
     setElections((prev) => prev.map((e) => (e.id === id ? { ...e, isOpen: false } : e)))
   }
 
