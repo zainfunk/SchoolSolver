@@ -25,7 +25,7 @@ const NAV_ITEMS = [
 ]
 
 export default function Sidebar() {
-  const { currentUser, setCurrentUser } = useMockAuth()
+  const { currentUser, setCurrentUser, realUser, isViewingAs, resetToSelf } = useMockAuth()
   const pathname = usePathname()
   const router = useRouter()
 
@@ -103,6 +103,7 @@ export default function Sidebar() {
 
       {/* User section */}
       <div className="border-t border-slate-200/50 pt-6 space-y-3 px-4">
+        {/* Real identity */}
         <div className="flex items-center gap-3">
           <Link href="/profile" className="shrink-0">
             <Avatar name={currentUser.name} size="sm" />
@@ -112,27 +113,40 @@ export default function Sidebar() {
               className="text-sm font-semibold text-slate-900 truncate leading-tight"
               style={{ fontFamily: 'var(--font-manrope)' }}
             >
-              {currentUser.name}
+              {isViewingAs ? realUser?.name ?? 'You' : currentUser.name}
             </p>
-            <span className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full ${ROLE_BADGE[currentUser.role]}`}>
-              {currentUser.role}
+            <span className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full ${ROLE_BADGE[isViewingAs ? (realUser?.role ?? 'student') : currentUser.role]}`}>
+              {isViewingAs ? (realUser?.role ?? 'student') : currentUser.role}
             </span>
           </div>
         </div>
 
-        {/* User switcher */}
-        <select
-          value={currentUser.id}
-          onChange={(e) => {
-            const user = USERS.find((u) => u.id === e.target.value)
-            if (user) { setCurrentUser(user); router.push('/') }
-          }}
-          className="w-full text-xs rounded-lg px-2 py-1.5 cursor-pointer text-slate-500 bg-slate-100 border-none outline-none"
-        >
-          {USERS.map((u) => (
-            <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
-          ))}
-        </select>
+        {/* Dev: View As switcher */}
+        <div>
+          <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">View As (Dev)</p>
+          {isViewingAs && (
+            <button
+              onClick={() => { resetToSelf(); router.push('/') }}
+              className="w-full text-xs rounded-lg px-2 py-1 mb-1 text-amber-700 bg-amber-50 font-semibold text-left"
+            >
+              ← Back to yourself
+            </button>
+          )}
+          <select
+            value={isViewingAs ? currentUser.id : ''}
+            onChange={(e) => {
+              if (!e.target.value) { resetToSelf(); router.push('/'); return }
+              const user = USERS.find((u) => u.id === e.target.value)
+              if (user) { setCurrentUser(user); router.push('/') }
+            }}
+            className="w-full text-xs rounded-lg px-2 py-1.5 cursor-pointer text-slate-500 bg-slate-100 border-none outline-none"
+          >
+            <option value="">— Myself —</option>
+            {USERS.map((u) => (
+              <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
+            ))}
+          </select>
+        </div>
       </div>
     </aside>
   )
