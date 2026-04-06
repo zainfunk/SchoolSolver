@@ -187,7 +187,7 @@ export default function FormDetailPage({ params }: { params: Promise<{ id: strin
 
           <div className="flex items-center justify-between">
             <h2 className="text-[10px] font-bold uppercase tracking-widest text-[#727785]">Candidates</h2>
-            {totalVotes > 0 && (
+            {totalVotes > 0 && currentUser.role !== 'student' && (
               <span className="text-xs text-[#727785]">{totalVotes} vote{totalVotes !== 1 ? 's' : ''} cast</span>
             )}
           </div>
@@ -197,7 +197,7 @@ export default function FormDetailPage({ params }: { params: Promise<{ id: strin
             const pct = totalVotes > 0 ? Math.round((candidate.votes.length / totalVotes) * 100) : 0
             const myVote = candidate.votes.includes(currentUser.id)
             const isViewer = currentUser.role === 'admin' || currentUser.role === 'advisor'
-            const showResults = isViewer || voted || !votingItem.isOpen
+            const showResults = isViewer
             const isPending = pendingCandidate === candidate.userId
 
             return (
@@ -294,10 +294,10 @@ export default function FormDetailPage({ params }: { params: Promise<{ id: strin
             {currentUser.role !== 'student'
               ? `Live results — ${totalVotes} vote${totalVotes !== 1 ? 's' : ''} recorded.`
               : voted
-              ? 'Your vote has been recorded. Results update in real time.'
+              ? 'Your vote has been recorded.'
               : votingItem.isOpen
               ? 'Select a candidate, then confirm your vote. You can only vote once.'
-              : 'This election is closed. Final results are shown above.'}
+              : 'This election is closed.'}
           </p>
         </div>
       )}

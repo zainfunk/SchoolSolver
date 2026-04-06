@@ -2,207 +2,150 @@
 
 import Link from 'next/link'
 import { useMockAuth } from '@/lib/mock-auth'
-import { CLUBS, getUserById, JOIN_REQUESTS } from '@/lib/mock-data'
-import { buttonVariants } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
-import { GraduationCap, BookOpen, Clock, Users } from 'lucide-react'
+import {
+  LayoutDashboard, Calendar, MessageSquare, FileText,
+  Compass, User, ShieldCheck, ArrowRight,
+} from 'lucide-react'
 
-const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const ROLE_BADGE: Record<string, { bg: string; text: string }> = {
+  student: { bg: 'rgba(16,185,129,0.1)', text: '#059669' },
+  advisor: { bg: 'rgba(0,88,190,0.1)',   text: '#0058be' },
+  admin:   { bg: 'rgba(186,26,26,0.1)',   text: '#ba1a1a' },
+}
 
-export default function Home() {
+type NavCard = {
+  href: string
+  label: string
+  description: string
+  icon: React.ElementType
+  iconBg: string
+  iconColor: string
+  roles: string[]
+}
+
+const NAV_CARDS: NavCard[] = [
+  {
+    href: '/dashboard',
+    label: 'My Clubs',
+    description: 'Your clubs, leadership roles, and upcoming meetings.',
+    icon: LayoutDashboard,
+    iconBg: 'rgba(0,88,190,0.08)',
+    iconColor: '#0058be',
+    roles: ['student', 'advisor'],
+  },
+  {
+    href: '/events',
+    label: 'Events',
+    description: 'Browse and discover upcoming events from all clubs.',
+    icon: Calendar,
+    iconBg: 'rgba(16,185,129,0.08)',
+    iconColor: '#059669',
+    roles: ['student', 'advisor', 'admin'],
+  },
+  {
+    href: '/chat',
+    label: 'Chat',
+    description: 'Message members of your clubs in real time.',
+    icon: MessageSquare,
+    iconBg: 'rgba(109,40,217,0.08)',
+    iconColor: '#7c3aed',
+    roles: ['student', 'advisor', 'admin'],
+  },
+  {
+    href: '/elections',
+    label: 'Forms & Elections',
+    description: 'Cast votes, submit forms, and track club decisions.',
+    icon: FileText,
+    iconBg: 'rgba(146,71,0,0.08)',
+    iconColor: '#924700',
+    roles: ['student', 'advisor', 'admin'],
+  },
+  {
+    href: '/clubs',
+    label: 'All Clubs',
+    description: 'Explore every club and find new communities to join.',
+    icon: Compass,
+    iconBg: 'rgba(79,70,229,0.08)',
+    iconColor: '#4338ca',
+    roles: ['student', 'advisor', 'admin'],
+  },
+  {
+    href: '/profile',
+    label: 'Profile',
+    description: 'View and manage your account details and settings.',
+    icon: User,
+    iconBg: 'rgba(225,29,72,0.08)',
+    iconColor: '#e11d48',
+    roles: ['student', 'advisor', 'admin'],
+  },
+  {
+    href: '/admin',
+    label: 'Admin Panel',
+    description: 'Manage clubs, elections, and school-wide settings.',
+    icon: ShieldCheck,
+    iconBg: 'rgba(186,26,26,0.08)',
+    iconColor: '#ba1a1a',
+    roles: ['admin'],
+  },
+]
+
+export default function HomePage() {
   const { currentUser } = useMockAuth()
+  const firstName = currentUser.name.split(' ')[0]
+  const badge = ROLE_BADGE[currentUser.role]
+  const cards = NAV_CARDS.filter((c) => c.roles.includes(currentUser.role))
 
-  // --- Student home ---
-  if (currentUser.role === 'student') {
-    const myClubs = CLUBS.filter((c) => c.memberIds.includes(currentUser.id))
-    const pendingRequests = JOIN_REQUESTS.filter(
-      (r) => r.userId === currentUser.id && r.status === 'pending'
-    )
-
-    return (
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Welcome back, {currentUser.name}</h1>
-          <p className="text-sm text-gray-500 mt-1">Here are the clubs you're part of.</p>
-        </div>
-
-        {pendingRequests.length > 0 && (
-          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Clock className="w-4 h-4 text-blue-500" />
-              <p className="text-sm font-medium text-blue-800">
-                {pendingRequests.length} pending request{pendingRequests.length > 1 ? 's' : ''} awaiting advisor review
-              </p>
-            </div>
-            <div className="space-y-1">
-              {pendingRequests.map((req) => {
-                const club = CLUBS.find((c) => c.id === req.clubId)
-                return (
-                  <Link key={req.id} href={`/clubs/${req.clubId}`} className="flex items-center gap-2 text-sm text-blue-700 hover:underline">
-                    <span>{club?.iconUrl ?? '📌'}</span>
-                    {club?.name ?? req.clubId}
-                  </Link>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {myClubs.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-2xl border">
-            <BookOpen className="w-10 h-10 text-gray-200 mx-auto mb-4" />
-            <p className="text-gray-500 font-medium mb-1">You haven't joined any clubs yet.</p>
-            <p className="text-sm text-gray-400 mb-5">Browse clubs and request to join ones that interest you.</p>
-            <Link href="/clubs" className={cn(buttonVariants())}>Browse Clubs</Link>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {myClubs.map((club) => {
-              const advisor = getUserById(club.advisorId)
-              const myPositions = club.leadershipPositions.filter((p) => p.userId === currentUser.id)
-              const nextMeeting = club.meetingTimes[0]
-
-              return (
-                <Link key={club.id} href={`/clubs/${club.id}`} className="group block">
-                  <div className="bg-white rounded-2xl border p-5 hover:shadow-md transition-shadow h-full">
-                    <div className="flex items-start gap-4 mb-4">
-                      <span className="text-4xl">{club.iconUrl ?? '📌'}</span>
-                      <div className="flex-1 min-w-0">
-                        <h2 className="font-bold text-gray-900 text-lg leading-tight group-hover:text-blue-600 transition-colors">
-                          {club.name}
-                        </h2>
-                        {advisor && (
-                          <p className="text-xs text-gray-400 mt-0.5">Advisor: {advisor.name}</p>
-                        )}
-                        {myPositions.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-1.5">
-                            {myPositions.map((pos) => (
-                              <span key={pos.id} className="text-xs bg-yellow-100 text-yellow-700 border border-yellow-200 px-2 py-0.5 rounded-full">
-                                {pos.title}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <p className="text-sm text-gray-600 line-clamp-2 mb-4">{club.description}</p>
-
-                    <div className="flex items-center justify-between text-xs text-gray-400 pt-3 border-t">
-                      <div className="flex items-center gap-1">
-                        <Users className="w-3.5 h-3.5" />
-                        {club.memberIds.length} member{club.memberIds.length !== 1 ? 's' : ''}
-                      </div>
-                      {nextMeeting && (
-                        <div className="flex items-center gap-1">
-                          <Clock className="w-3.5 h-3.5" />
-                          {DAY_NAMES[nextMeeting.dayOfWeek]}s {nextMeeting.startTime}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </Link>
-              )
-            })}
-          </div>
-        )}
-
-        <div className="mt-6 flex gap-3">
-          <Link href="/clubs" className={cn(buttonVariants({ variant: 'outline' }))}>
-            Browse All Clubs
-          </Link>
-          <Link href="/events" className={cn(buttonVariants({ variant: 'outline' }))}>
-            View Events
-          </Link>
-        </div>
-      </div>
-    )
-  }
-
-  // --- Advisor home ---
-  if (currentUser.role === 'advisor') {
-    const myClubs = CLUBS.filter((c) => c.advisorId === currentUser.id)
-
-    return (
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Welcome, {currentUser.name}</h1>
-          <p className="text-sm text-gray-500 mt-1">Clubs you advise.</p>
-        </div>
-
-        {myClubs.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-2xl border">
-            <Users className="w-10 h-10 text-gray-200 mx-auto mb-4" />
-            <p className="text-gray-500">You are not assigned as advisor to any clubs yet.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {myClubs.map((club) => {
-              const pendingCount = JOIN_REQUESTS.filter(
-                (r) => r.clubId === club.id && r.status === 'pending'
-              ).length
-
-              return (
-                <Link key={club.id} href={`/clubs/${club.id}`} className="group block">
-                  <div className="bg-white rounded-2xl border p-5 hover:shadow-md transition-shadow h-full">
-                    <div className="flex items-start gap-4 mb-3">
-                      <span className="text-4xl">{club.iconUrl ?? '📌'}</span>
-                      <div className="flex-1 min-w-0">
-                        <h2 className="font-bold text-gray-900 text-lg leading-tight group-hover:text-blue-600 transition-colors">
-                          {club.name}
-                        </h2>
-                        <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
-                          <span className="flex items-center gap-1">
-                            <Users className="w-3 h-3" />
-                            {club.memberIds.length}/{club.capacity === null ? '∞' : club.capacity}
-                          </span>
-                          {pendingCount > 0 && (
-                            <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-                              {pendingCount} pending
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <p className="text-sm text-gray-600 line-clamp-2">{club.description}</p>
-                  </div>
-                </Link>
-              )
-            })}
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  // --- Admin home ---
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Welcome, {currentUser.name}</h1>
+    <div className="max-w-2xl mx-auto">
+      {/* Welcome header */}
+      <div className="text-center mb-12 mt-4">
+        <h1
+          className="text-[2.75rem] font-extrabold text-[#191c1d] tracking-tight leading-tight mb-3"
+          style={{ fontFamily: 'var(--font-manrope)' }}
+        >
+          Welcome to Clubit
+        </h1>
+        <div className="flex items-center justify-center gap-2">
+          <p className="text-gray-500 text-base">Hi, {firstName}</p>
+          <span
+            className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full"
+            style={{ background: badge.bg, color: badge.text }}
+          >
+            {currentUser.role}
+          </span>
+        </div>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Link href="/admin" className="bg-white rounded-2xl border p-6 hover:shadow-md transition-shadow text-center group">
-          <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center mx-auto mb-3">
-            <GraduationCap className="w-5 h-5 text-red-600" />
-          </div>
-          <p className="font-semibold text-gray-900 group-hover:text-blue-600">Admin Panel</p>
-          <p className="text-xs text-gray-400 mt-1">Manage clubs and elections</p>
-        </Link>
-        <Link href="/clubs" className="bg-white rounded-2xl border p-6 hover:shadow-md transition-shadow text-center group">
-          <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center mx-auto mb-3">
-            <Users className="w-5 h-5 text-blue-600" />
-          </div>
-          <p className="font-semibold text-gray-900 group-hover:text-blue-600">All Clubs</p>
-          <p className="text-xs text-gray-400 mt-1">{CLUBS.length} clubs active</p>
-        </Link>
-        <Link href="/events" className="bg-white rounded-2xl border p-6 hover:shadow-md transition-shadow text-center group">
-          <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center mx-auto mb-3">
-            <Clock className="w-5 h-5 text-green-600" />
-          </div>
-          <p className="font-semibold text-gray-900 group-hover:text-blue-600">Events</p>
-          <p className="text-xs text-gray-400 mt-1">View all club events</p>
-        </Link>
+
+      {/* Nav cards grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {cards.map(({ href, label, description, icon: Icon, iconBg, iconColor }) => (
+          <Link key={href} href={href}>
+            <div
+              className="group flex items-start gap-5 bg-white rounded-xl p-6 cursor-pointer transition-all duration-200 hover:scale-[1.02]"
+              style={{ boxShadow: '0 8px 24px rgba(0,0,0,0.04)' }}
+            >
+              <div
+                className="w-12 h-12 rounded-full flex items-center justify-center shrink-0"
+                style={{ background: iconBg }}
+              >
+                <Icon style={{ color: iconColor, width: '1.25rem', height: '1.25rem' }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3
+                  className="font-bold text-[#191c1d] text-base leading-tight mb-1 group-hover:text-[#0058be] transition-colors"
+                  style={{ fontFamily: 'var(--font-manrope)' }}
+                >
+                  {label}
+                </h3>
+                <p className="text-sm text-gray-500 leading-snug">{description}</p>
+              </div>
+              <ArrowRight
+                className="shrink-0 mt-0.5 text-gray-300 group-hover:text-[#0058be] group-hover:translate-x-1 transition-all"
+                style={{ width: '1rem', height: '1rem' }}
+              />
+            </div>
+          </Link>
+        ))}
       </div>
     </div>
   )

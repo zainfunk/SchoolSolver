@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import { useMockAuth } from '@/lib/mock-auth'
 import { CLUBS, JOIN_REQUESTS, getUserById, getClubsByAdvisor } from '@/lib/mock-data'
-import ClubCard from '@/components/clubs/ClubCard'
 import { Users, BookOpen } from 'lucide-react'
 import type { Club } from '@/types'
 
@@ -123,26 +122,90 @@ export default function DashboardPage() {
 
   if (currentUser.role === 'advisor') {
     const myClubs = getClubsByAdvisor(currentUser.id)
+    const firstName = currentUser.name.split(' ')[0]
 
     return (
-      <div>
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">My Clubs</h1>
-          <p className="text-sm text-gray-500 mt-1">Clubs you advise, {currentUser.name}</p>
-        </div>
+      <div className="max-w-2xl mx-auto">
+        {/* Welcome Banner */}
+        <section className="mb-10">
+          <div className="p-6 rounded-xl" style={{ background: 'rgba(33, 112, 228, 0.08)', border: '1px solid rgba(0, 88, 190, 0.1)' }}>
+            <h2 className="text-3xl font-extrabold text-[#191c1d] tracking-tight leading-none mb-2"
+              style={{ fontFamily: 'var(--font-manrope, sans-serif)' }}>
+              Hi, {firstName}!
+            </h2>
+            <p className="font-medium text-[#0058be]">
+              You are advising {myClubs.length} club{myClubs.length !== 1 ? 's' : ''}.
+            </p>
+          </div>
+        </section>
 
-        {myClubs.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-xl border">
-            <Users className="w-8 h-8 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500">You are not assigned as advisor to any clubs yet.</p>
+        {/* Club List */}
+        <div className="flex flex-col gap-6">
+          {myClubs.length === 0 ? (
+            <div className="text-center py-20 bg-white rounded-xl border">
+              <Users className="w-8 h-8 text-gray-300 mx-auto mb-3" />
+              <p className="text-gray-500 font-medium">You are not assigned as advisor to any clubs yet.</p>
+            </div>
+          ) : (
+            myClubs.map((club) => {
+              const pattern = getPattern(club)
+              const iconStyle = PATTERN_ICON_STYLES[pattern]
+              return (
+                <Link key={club.id} href={`/clubs/${club.id}`}>
+                  <div
+                    className="relative overflow-hidden bg-white rounded-xl p-6 transition-all duration-300 hover:scale-[1.01] cursor-pointer"
+                    style={{ boxShadow: '0 8px 24px rgba(0,0,0,0.04)' }}
+                  >
+                    <div className={`absolute right-0 top-0 w-[40%] h-full editorial-pattern-${pattern}`} />
+                    <div className="relative z-10 flex items-center gap-5">
+                      <div
+                        className="w-14 h-14 rounded-full flex items-center justify-center text-2xl flex-shrink-0"
+                        style={{ background: iconStyle.bg }}
+                      >
+                        {club.iconUrl ?? '📌'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="mb-1">
+                          <span
+                            className="text-[10px] font-bold tracking-widest uppercase px-2 py-0.5 rounded-full"
+                            style={{ background: 'rgba(146, 71, 0, 0.1)', color: '#924700' }}
+                          >
+                            advisor
+                          </span>
+                        </div>
+                        <h3
+                          className="font-bold text-[#191c1d] leading-tight text-lg"
+                          style={{ fontFamily: 'var(--font-manrope, sans-serif)' }}
+                        >
+                          {club.name}
+                        </h3>
+                        <p className="text-sm font-medium text-[#727785]">
+                          {club.memberIds.length} member{club.memberIds.length !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              )
+            })
+          )}
+
+          {/* Explore All Clubs CTA */}
+          <div
+            className="mt-8 rounded-xl p-8 flex flex-col items-center text-center"
+            style={{ border: '2px dashed rgba(194, 198, 214, 0.4)' }}
+          >
+            <p className="text-sm font-medium text-[#727785] mb-4">Want to expand your horizons?</p>
+            <Link href="/clubs">
+              <button
+                className="font-bold py-3 px-8 rounded-full text-sm uppercase tracking-widest transition-colors hover:bg-gray-200"
+                style={{ background: '#e1e3e4', color: '#191c1d', fontFamily: 'var(--font-manrope, sans-serif)' }}
+              >
+                EXPLORE ALL CLUBS
+              </button>
+            </Link>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {myClubs.map((club) => (
-              <ClubCard key={club.id} club={club} advisor={currentUser} />
-            ))}
-          </div>
-        )}
+        </div>
       </div>
     )
   }

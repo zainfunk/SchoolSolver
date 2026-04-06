@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Manrope } from "next/font/google";
 import "./globals.css";
 import { MockAuthProvider } from "@/lib/mock-auth";
+import { ChatProvider } from "@/lib/chat-store";
 import Navbar from "@/components/layout/Navbar";
 
 const geistSans = Geist({
@@ -37,8 +38,10 @@ export default function RootLayout({
     >
       <body className="min-h-full flex bg-[#f8f9fa]">
         <MockAuthProvider>
-          <Navbar />
-          <main className="flex-1 min-h-screen px-8 py-8 overflow-y-auto max-w-4xl">{children}</main>
+          <ChatProvider>
+            <Navbar />
+            <main className="flex-1 min-h-screen px-8 py-8 overflow-y-auto max-w-4xl">{children}</main>
+          </ChatProvider>
         </MockAuthProvider>
       </body>
     </html>
