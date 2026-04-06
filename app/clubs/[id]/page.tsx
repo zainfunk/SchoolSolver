@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useState, useRef } from 'react'
+import { use, useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { useMockAuth } from '@/lib/mock-auth'
