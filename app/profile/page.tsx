@@ -227,7 +227,7 @@ export default function ProfilePage() {
           <Shield className="w-4 h-4 text-red-500 shrink-0" />
           <span className="text-sm font-medium text-red-700 mr-1">Viewing:</span>
           <select
-            value={selectedUserId}
+            value={selectedUserId ?? ''}
             onChange={(e) => {
               setSelectedUserId(e.target.value)
               setEditingEmail(false)
