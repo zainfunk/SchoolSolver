@@ -128,8 +128,9 @@ export default function ClubDetailPage({ params }: PageProps) {
   const [manualDate, setManualDate] = useState(() => new Date().toISOString().split('T')[0])
   const [showManual, setShowManual] = useState(false)
 
-  const club = clubs.find((c) => c.id === id)
-  if (!club) notFound()
+  const foundClub = clubs.find((c) => c.id === id)
+  if (!foundClub) notFound()
+  const club = foundClub!
 
   const advisor = getUserById(club.advisorId)
   const members = club.memberIds.map((mid) => getUserById(mid)).filter(Boolean)
