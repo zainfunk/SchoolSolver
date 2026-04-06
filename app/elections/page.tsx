@@ -278,7 +278,7 @@ export default function FormsPage() {
                             {currentUser.role !== 'student'
                               ? 'View Details'
                               : item.done
-                              ? 'View Results'
+                              ? 'View'
                               : isElection ? 'Vote Now' : 'Open Form'}
                             <ChevronRight className="w-3.5 h-3.5" />
                           </div>

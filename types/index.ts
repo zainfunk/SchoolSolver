@@ -129,6 +129,14 @@ export interface SchoolElection {
   isOpen: boolean
 }
 
+export interface ChatMessage {
+  id: string
+  clubId: string
+  senderId: string
+  content: string
+  sentAt: string // ISO timestamp
+}
+
 export type ClubFormType = 'signup' | 'nomination' | 'survey' | 'approval'
 
 export interface ClubForm {

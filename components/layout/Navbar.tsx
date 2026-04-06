@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useMockAuth } from '@/lib/mock-auth'
 import { USERS } from '@/lib/mock-data'
-import { GraduationCap, LayoutDashboard, Calendar, FileText, Compass, User, ShieldCheck } from 'lucide-react'
+import { GraduationCap, LayoutDashboard, Calendar, FileText, Compass, User, ShieldCheck, MessageSquare } from 'lucide-react'
 import Avatar from '@/components/Avatar'
 
 const ROLE_BADGE: Record<string, string> = {
@@ -14,12 +14,13 @@ const ROLE_BADGE: Record<string, string> = {
 }
 
 const NAV_ITEMS = [
-  { href: '/dashboard', icon: LayoutDashboard, label: 'My Clubs', roles: ['student', 'advisor'] },
-  { href: '/events',    icon: Calendar,         label: 'Events',   roles: ['student', 'advisor', 'admin'] },
-  { href: '/elections', icon: FileText,          label: 'Forms',    roles: ['student', 'advisor', 'admin'] },
-  { href: '/clubs',     icon: Compass,           label: 'All Clubs',roles: ['student', 'advisor', 'admin'] },
-  { href: '/profile',   icon: User,              label: 'Profile',  roles: ['student', 'advisor', 'admin'] },
-  { href: '/admin',     icon: ShieldCheck,       label: 'Admin',    roles: ['admin'] },
+  { href: '/dashboard',  icon: LayoutDashboard, label: 'My Clubs',  roles: ['student', 'advisor'] },
+  { href: '/events',     icon: Calendar,        label: 'Events',    roles: ['student', 'advisor', 'admin'] },
+  { href: '/chat',       icon: MessageSquare,   label: 'Chat',      roles: ['student', 'advisor', 'admin'] },
+  { href: '/elections',  icon: FileText,        label: 'Forms',     roles: ['student', 'advisor', 'admin'] },
+  { href: '/clubs',      icon: Compass,         label: 'All Clubs', roles: ['student', 'advisor', 'admin'] },
+  { href: '/profile',    icon: User,            label: 'Profile',   roles: ['student', 'advisor', 'admin'] },
+  { href: '/admin',      icon: ShieldCheck,     label: 'Admin',     roles: ['admin'] },
 ]
 
 export default function Sidebar() {

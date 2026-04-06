@@ -1,11 +1,19 @@
 'use client'
 
-import Link from 'next/link'
 import { useState } from 'react'
-import { EVENTS, CLUBS, getUserById } from '@/lib/mock-data'
-import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
-import { Calendar, MapPin, Search } from 'lucide-react'
+import Link from 'next/link'
+import { EVENTS, CLUBS } from '@/lib/mock-data'
+import { Search, Clock, MapPin } from 'lucide-react'
+
+const CLUB_COLORS: Record<string, { spine: string; spineText: string; badge: string; badgeText: string; panel: string }> = {
+  'club-robotics':    { spine: 'bg-blue-50',   spineText: 'text-blue-800',   badge: 'bg-blue-100',   badgeText: 'text-blue-700',   panel: 'bg-blue-50/60' },
+  'club-drama':       { spine: 'bg-purple-50',  spineText: 'text-purple-800', badge: 'bg-purple-100', badgeText: 'text-purple-700', panel: 'bg-purple-50/60' },
+  'club-chess':       { spine: 'bg-amber-50',   spineText: 'text-amber-800',  badge: 'bg-amber-100',  badgeText: 'text-amber-700',  panel: 'bg-amber-50/60' },
+  'club-environment': { spine: 'bg-emerald-50', spineText: 'text-emerald-800',badge: 'bg-emerald-100',badgeText: 'text-emerald-700',panel: 'bg-emerald-50/60' },
+}
+
+const PAST_COLORS = { spine: 'bg-gray-100', spineText: 'text-gray-500', badge: 'bg-gray-100', badgeText: 'text-gray-500', panel: 'bg-gray-50' }
+const DEFAULT_COLORS = { spine: 'bg-blue-50', spineText: 'text-blue-800', badge: 'bg-blue-100', badgeText: 'text-blue-700', panel: 'bg-blue-50/60' }
 
 export default function EventsPage() {
   const [search, setSearch] = useState('')
@@ -35,96 +43,132 @@ export default function EventsPage() {
 
   return (
     <div className="max-w-3xl mx-auto">
-      <div className="mb-6">
-        <div className="flex items-center gap-3 mb-1">
-          <Calendar className="w-6 h-6 text-green-600" />
-          <h1 className="text-2xl font-bold text-gray-900">Events</h1>
+      {/* Header */}
+      <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-10">
+        <div>
+          <h2
+            className="text-[2rem] font-bold tracking-tight text-gray-900 leading-tight"
+            style={{ fontFamily: 'var(--font-manrope)' }}
+          >
+            Events Feed
+          </h2>
+          <p className="text-gray-500 mt-2 text-sm max-w-sm">
+            Upcoming events from clubs across the school.
+          </p>
         </div>
-        <p className="text-sm text-gray-500">Public events from all clubs.</p>
-      </div>
-
-      <div className="flex items-center gap-3 mb-6 flex-wrap">
-        <div className="relative flex-1 min-w-48">
+        <div className="relative w-full sm:w-64 shrink-0">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <Input
-            className="pl-9"
-            placeholder="Search events or clubs…"
+          <input
+            className="w-full pl-9 pr-4 py-2.5 bg-gray-100 border-none rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+            placeholder="Search events..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <div className="flex rounded-lg border overflow-hidden text-sm">
-          {(['upcoming', 'past', 'all'] as const).map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-3 py-1.5 capitalize transition-colors ${
-                filter === f
-                  ? 'bg-gray-900 text-white'
-                  : 'bg-white text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              {f}
-            </button>
-          ))}
-        </div>
+      </header>
+
+      {/* Filter pills */}
+      <div className="flex items-center gap-2 mb-10">
+        {(['upcoming', 'past', 'all'] as const).map((f) => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            className={`px-5 py-2 rounded-full text-[11px] font-bold uppercase tracking-widest transition-colors ${
+              filter === f
+                ? 'bg-[#0058be] text-white'
+                : 'text-gray-500 hover:bg-gray-200'
+            }`}
+          >
+            {f}
+          </button>
+        ))}
       </div>
 
+      {/* Events list */}
       {publicEvents.length === 0 ? (
         <div className="text-center py-20 bg-white rounded-xl border">
-          <Calendar className="w-8 h-8 text-gray-200 mx-auto mb-3" />
-          <p className="text-gray-500">No events found.</p>
+          <p className="text-gray-400 text-sm">No events found.</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-8">
           {publicEvents.map((event) => {
             const club = CLUBS.find((c) => c.id === event.clubId)
             const isPast = event.date < today
-            const creator = getUserById(event.createdBy)
+            const date = new Date(event.date + 'T00:00:00')
+            const month = date.toLocaleString('en', { month: 'short' }).toUpperCase()
+            const day = date.getDate()
+            const colors = isPast ? PAST_COLORS : (CLUB_COLORS[event.clubId] ?? DEFAULT_COLORS)
 
             return (
-              <div
-                key={event.id}
-                className={`bg-white rounded-xl border p-4 ${isPast ? 'opacity-60' : ''}`}
-              >
-                <div className="flex items-start gap-4">
-                  {/* Date block */}
-                  <div className="shrink-0 w-14 text-center bg-gray-50 border rounded-lg py-2">
-                    <p className="text-xs text-gray-400 uppercase tracking-wide">
-                      {new Date(event.date + 'T00:00:00').toLocaleString('en', { month: 'short' })}
-                    </p>
-                    <p className="text-xl font-bold text-gray-900 leading-none">
-                      {new Date(event.date + 'T00:00:00').getDate()}
-                    </p>
-                  </div>
+              <div key={event.id} className="flex flex-col lg:flex-row gap-6 items-start group">
+                {/* Date spine */}
+                <div
+                  className={`hidden lg:flex flex-col items-center justify-center w-20 py-4 rounded-xl shrink-0 ${colors.spine} ${colors.spineText}`}
+                >
+                  <span className="text-[10px] font-bold uppercase tracking-tight">{month}</span>
+                  <span
+                    className="text-3xl font-black leading-tight"
+                    style={{ fontFamily: 'var(--font-manrope)' }}
+                  >
+                    {day}
+                  </span>
+                </div>
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2 flex-wrap">
-                      <h3 className="font-semibold text-gray-900">{event.title}</h3>
-                      {isPast && (
-                        <Badge variant="outline" className="text-xs shrink-0">Past</Badge>
-                      )}
-                    </div>
-
-                    <p className="text-sm text-gray-500 mt-1 line-clamp-2">{event.description}</p>
-
-                    <div className="flex items-center gap-4 mt-2 flex-wrap">
+                {/* Card */}
+                <div
+                  className={`flex-1 bg-white rounded-xl overflow-hidden flex flex-col md:flex-row
+                    shadow-[0_8px_24px_rgba(0,0,0,0.04)] group-hover:shadow-[0_12px_32px_rgba(0,0,0,0.08)] transition-all
+                    ${isPast ? 'opacity-60' : ''}`}
+                >
+                  <div className="p-7 flex-1">
+                    {/* Club badge */}
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm leading-none ${colors.badge}`}>
+                        {club?.iconUrl ?? '📌'}
+                      </div>
                       {club && (
                         <Link
                           href={`/clubs/${club.id}`}
-                          className="flex items-center gap-1.5 text-xs text-blue-600 hover:underline"
+                          className={`text-xs font-bold uppercase tracking-wider hover:underline ${colors.badgeText}`}
                         >
-                          <span>{club.iconUrl ?? '📌'}</span>
                           {club.name}
                         </Link>
                       )}
-                      {event.location && (
-                        <span className="flex items-center gap-1 text-xs text-gray-400">
-                          <MapPin className="w-3.5 h-3.5" />
-                          {event.location}
+                    </div>
+
+                    {/* Title */}
+                    <h3
+                      className="text-[1.1rem] font-semibold text-gray-900 mb-2 group-hover:text-[#0058be] transition-colors"
+                      style={{ fontFamily: 'var(--font-manrope)' }}
+                    >
+                      {event.title}
+                    </h3>
+
+                    {/* Description */}
+                    <p className="text-gray-500 text-sm leading-relaxed mb-5 max-w-xl line-clamp-2">
+                      {event.description}
+                    </p>
+
+                    {/* Meta */}
+                    <div className="flex items-center flex-wrap gap-5">
+                      <div className="flex items-center gap-1.5 text-gray-400 text-xs">
+                        <Clock className="w-3.5 h-3.5" />
+                        <span>
+                          {date.toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' })}
                         </span>
+                      </div>
+                      {event.location && (
+                        <div className="flex items-center gap-1.5 text-gray-400 text-xs">
+                          <MapPin className="w-3.5 h-3.5" />
+                          <span>{event.location}</span>
+                        </div>
                       )}
                     </div>
+                  </div>
+
+                  {/* Color panel */}
+                  <div className={`hidden md:block w-40 relative ${colors.panel}`}>
+                    <div className="absolute inset-0 bg-gradient-to-l from-transparent to-white/30" />
                   </div>
                 </div>
               </div>
