@@ -21,8 +21,8 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "SchoolSolver",
-  description: "Smarter club selection for high schools",
+  title: "Clubit",
+  description: "Your school's club hub",
 };
 
 export default function RootLayout({
@@ -35,10 +35,10 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${manrope.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-gray-50">
+      <body className="min-h-full flex bg-[#f8f9fa]">
         <MockAuthProvider>
           <Navbar />
-          <main className="max-w-6xl mx-auto px-4 py-8 w-full">{children}</main>
+          <main className="flex-1 min-h-screen px-8 py-8 overflow-y-auto max-w-4xl">{children}</main>
         </MockAuthProvider>
       </body>
     </html>

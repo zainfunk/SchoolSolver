@@ -1,12 +1,12 @@
-import { Club, User, Membership, ClubEvent, JoinRequest, AttendanceRecord, Poll, SchoolElection, ClubNews } from '@/types'
+import { Club, User, Membership, ClubEvent, JoinRequest, AttendanceRecord, Poll, SchoolElection, ClubNews, ClubForm } from '@/types'
 
 export const USERS: User[] = [
-  { id: 'user-admin-1', name: 'Principal Hayes', email: 'hayes@schoolsolver.edu', role: 'admin' },
-  { id: 'user-advisor-1', name: 'Ms. Patel', email: 'patel@schoolsolver.edu', role: 'advisor' },
-  { id: 'user-advisor-2', name: 'Mr. Thompson', email: 'thompson@schoolsolver.edu', role: 'advisor' },
-  { id: 'user-student-1', name: 'Alex Rivera', email: 'alex@schoolsolver.edu', role: 'student' },
-  { id: 'user-student-2', name: 'Jordan Kim', email: 'jordan@schoolsolver.edu', role: 'student' },
-  { id: 'user-student-3', name: 'Sam Okafor', email: 'sam@schoolsolver.edu', role: 'student' },
+  { id: 'user-admin-1', name: 'Principal Hayes', email: 'hayes@clubit.edu', role: 'admin' },
+  { id: 'user-advisor-1', name: 'Ms. Patel', email: 'patel@clubit.edu', role: 'advisor' },
+  { id: 'user-advisor-2', name: 'Mr. Thompson', email: 'thompson@clubit.edu', role: 'advisor' },
+  { id: 'user-student-1', name: 'Alex Rivera', email: 'alex@clubit.edu', role: 'student' },
+  { id: 'user-student-2', name: 'Jordan Kim', email: 'jordan@clubit.edu', role: 'student' },
+  { id: 'user-student-3', name: 'Sam Okafor', email: 'sam@clubit.edu', role: 'student' },
 ]
 
 export const CLUBS: Club[] = [
@@ -241,11 +241,11 @@ export const POLLS: Poll[] = [
   },
 ]
 
-export const SCHOOL_ELECTIONS = [
+export const SCHOOL_ELECTIONS: SchoolElection[] = [
   {
     id: 'selec-1',
     positionTitle: 'Student Body President',
-    description: "Vote for next year's Student Body President.",
+    description: "Vote for next year's Student Body President. Shape the future of campus life.",
     candidates: [
       { userId: 'user-student-1', votes: ['user-student-2'] },
       { userId: 'user-student-3', votes: [] },
@@ -256,7 +256,7 @@ export const SCHOOL_ELECTIONS = [
   {
     id: 'selec-2',
     positionTitle: 'Student Body Treasurer',
-    description: "Vote for next year's Student Body Treasurer.",
+    description: "Vote for next year's Student Body Treasurer. Responsible for managing the student activity fund.",
     candidates: [
       { userId: 'user-student-2', votes: [] },
       { userId: 'user-student-3', votes: [] },
@@ -264,9 +264,75 @@ export const SCHOOL_ELECTIONS = [
     createdAt: '2026-04-01T09:05:00Z',
     isOpen: true,
   },
+  {
+    id: 'selec-3',
+    positionTitle: 'Student Body Vice President',
+    description: "Past election — Vice President for the 2025–26 school year.",
+    candidates: [
+      { userId: 'user-student-1', votes: ['user-admin-1', 'user-advisor-1'] },
+      { userId: 'user-student-2', votes: ['user-advisor-2'] },
+    ],
+    createdAt: '2025-09-10T09:00:00Z',
+    isOpen: false,
+  },
+]
+
+export const CLUB_FORMS: ClubForm[] = [
+  {
+    id: 'form-1',
+    clubId: 'club-drama',
+    title: 'Officer Nominations',
+    description: 'Nominate candidates for Stage Manager and Treasurer for the upcoming semester.',
+    formType: 'nomination',
+    isOpen: true,
+    closesAt: '2026-04-08T17:00:00Z',
+    createdAt: '2026-04-01T10:00:00Z',
+  },
+  {
+    id: 'form-2',
+    clubId: 'club-robotics',
+    title: 'Regional Competition Sign-Up',
+    description: 'Travel authorization and liability waiver for the Spring Regional Robotics Competition.',
+    formType: 'signup',
+    isOpen: true,
+    closesAt: '2026-04-10T17:00:00Z',
+    createdAt: '2026-04-01T10:00:00Z',
+  },
+  {
+    id: 'form-3',
+    clubId: 'club-environment',
+    title: 'Earth Day Project Selection',
+    description: 'Vote on our Earth Day initiative: campus clean-up, recycling drive, or tree planting.',
+    formType: 'survey',
+    isOpen: true,
+    closesAt: '2026-04-11T18:00:00Z',
+    createdAt: '2026-04-02T10:00:00Z',
+  },
+  {
+    id: 'form-4',
+    clubId: 'club-chess',
+    title: 'Annual Budget Approval 2026',
+    description: 'Review and approve the proposed annual budget for club activities and equipment.',
+    formType: 'approval',
+    isOpen: false,
+    closesAt: '2026-03-28T17:00:00Z',
+    createdAt: '2026-03-20T10:00:00Z',
+  },
 ]
 
 // --- Helpers ---
+
+export function getClubFormById(id: string): ClubForm | undefined {
+  return CLUB_FORMS.find((f) => f.id === id)
+}
+
+export function getSchoolElectionById(id: string): SchoolElection | undefined {
+  return SCHOOL_ELECTIONS.find((e) => e.id === id)
+}
+
+export function getPollById(id: string): Poll | undefined {
+  return POLLS.find((p) => p.id === id)
+}
 
 export function getUserById(id: string): User | undefined {
   return USERS.find((u) => u.id === id)
