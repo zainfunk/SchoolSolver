@@ -4,6 +4,7 @@ import { use, useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { useMockAuth } from '@/lib/mock-auth'
+import { supabase } from '@/lib/supabase'
 import {
   CLUBS, MEMBERSHIPS, JOIN_REQUESTS, POLLS,
   getUserById, getEventsByClub, getAttendanceByClub, getNewsByClub, USERS,
@@ -50,11 +51,43 @@ export default function ClubDetailPage({ params }: PageProps) {
   const { id } = use(params)
   const { currentUser } = useMockAuth()
 
-  // Core state
+  // Core state — seeded from mock, merged with Supabase on mount
   const [clubs, setClubs] = useState(CLUBS)
   const [memberships, setMemberships] = useState(MEMBERSHIPS)
   const [requests, setRequests] = useState<JoinRequest[]>(JOIN_REQUESTS)
   const [polls, setPolls] = useState<Poll[]>(POLLS)
+
+  useEffect(() => {
+    // Merge Supabase memberships into local club state
+    supabase.from('memberships').select('*').eq('club_id', id).then(({ data }) => {
+      if (!data?.length) return
+      const newMemberships = data.map((r) => ({ id: r.id, clubId: r.club_id, userId: r.user_id, joinedAt: r.joined_at }))
+      setMemberships((prev) => {
+        const merged = [...prev]
+        for (const m of newMemberships) {
+          if (!merged.find((x) => x.clubId === m.clubId && x.userId === m.userId)) merged.push(m)
+        }
+        return merged
+      })
+      setClubs((prev) => prev.map((c) => {
+        if (c.id !== id) return c
+        const newMemberIds = data.map((r) => r.user_id).filter((uid) => !c.memberIds.includes(uid))
+        return newMemberIds.length ? { ...c, memberIds: [...c.memberIds, ...newMemberIds] } : c
+      }))
+    })
+    // Merge Supabase join requests
+    supabase.from('join_requests').select('*').eq('club_id', id).then(({ data }) => {
+      if (!data?.length) return
+      const newRequests = data.map((r) => ({ id: r.id, clubId: r.club_id, userId: r.user_id, requestedAt: r.requested_at, status: r.status }))
+      setRequests((prev) => {
+        const merged = [...prev]
+        for (const r of newRequests) {
+          if (!merged.find((x) => x.id === r.id)) merged.push(r)
+        }
+        return merged
+      })
+    })
+  }, [id])
   const [clubEvents, setClubEvents] = useState<ClubEvent[]>(() => getEventsByClub(id))
   const [clubNews, setClubNews] = useState<ClubNews[]>(() => getNewsByClub(id))
 
@@ -172,34 +205,45 @@ export default function ClubDetailPage({ params }: PageProps) {
   }
 
   // --- Join request handlers ---
-  function handleRequest() {
+  async function handleRequest() {
     const autoApprove = club.autoAccept && !isFull
-    const newRequest: JoinRequest = {
-      id: `req-${Date.now()}`, clubId: id, userId: currentUser.id,
-      requestedAt: new Date().toISOString(), status: autoApprove ? 'approved' : 'pending',
-    }
-    setRequests((prev) => [...prev, newRequest])
+    const reqId = `req-${Date.now()}`
+    const membershipId = `m-${Date.now()}`
+    const now = new Date().toISOString()
+    const status = autoApprove ? 'approved' : 'pending'
+
+    await supabase.from('join_requests').insert({ id: reqId, club_id: id, user_id: currentUser.id, requested_at: now, status })
+    setRequests((prev) => [...prev, { id: reqId, clubId: id, userId: currentUser.id, requestedAt: now, status }])
+
     if (autoApprove) {
+      await supabase.from('memberships').insert({ id: membershipId, club_id: id, user_id: currentUser.id, joined_at: now.split('T')[0] })
       setClubs((prev) => prev.map((c) => c.id === id ? { ...c, memberIds: [...c.memberIds, currentUser.id] } : c))
-      setMemberships((prev) => [...prev, { id: `m-${Date.now()}`, clubId: id, userId: currentUser.id, joinedAt: new Date().toISOString().split('T')[0] }])
+      setMemberships((prev) => [...prev, { id: membershipId, clubId: id, userId: currentUser.id, joinedAt: now.split('T')[0] }])
     }
   }
 
-  function handleLeave() {
+  async function handleLeave() {
+    await supabase.from('memberships').delete().eq('club_id', id).eq('user_id', currentUser.id)
+    await supabase.from('join_requests').delete().eq('club_id', id).eq('user_id', currentUser.id)
     setClubs((prev) => prev.map((c) => c.id === id ? { ...c, memberIds: c.memberIds.filter((mid) => mid !== currentUser.id) } : c))
     setMemberships((prev) => prev.filter((m) => !(m.clubId === id && m.userId === currentUser.id)))
     setRequests((prev) => prev.filter((r) => !(r.clubId === id && r.userId === currentUser.id)))
   }
 
-  function handleApprove(requestId: string) {
+  async function handleApprove(requestId: string) {
     const req = requests.find((r) => r.id === requestId)
     if (!req) return
+    const membershipId = `m-${Date.now()}`
+    const joinedAt = new Date().toISOString().split('T')[0]
+    await supabase.from('join_requests').update({ status: 'approved' }).eq('id', requestId)
+    await supabase.from('memberships').insert({ id: membershipId, club_id: id, user_id: req.userId, joined_at: joinedAt })
     setRequests((prev) => prev.map((r) => r.id === requestId ? { ...r, status: 'approved' } : r))
     setClubs((prev) => prev.map((c) => c.id === id ? { ...c, memberIds: [...c.memberIds, req.userId] } : c))
-    setMemberships((prev) => [...prev, { id: `m-${Date.now()}`, clubId: id, userId: req.userId, joinedAt: new Date().toISOString().split('T')[0] }])
+    setMemberships((prev) => [...prev, { id: membershipId, clubId: id, userId: req.userId, joinedAt }])
   }
 
-  function handleReject(requestId: string) {
+  async function handleReject(requestId: string) {
+    await supabase.from('join_requests').update({ status: 'rejected' }).eq('id', requestId)
     setRequests((prev) => prev.map((r) => r.id === requestId ? { ...r, status: 'rejected' } : r))
   }
 
