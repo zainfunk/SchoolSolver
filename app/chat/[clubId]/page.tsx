@@ -7,7 +7,14 @@ import { useMockAuth } from '@/lib/mock-auth'
 import { useChatStore } from '@/lib/chat-store'
 import { CLUBS, USERS } from '@/lib/mock-data'
 import Avatar from '@/components/Avatar'
-import { ArrowLeft, Send } from 'lucide-react'
+import { ArrowLeft, Send, MessageSquare } from 'lucide-react'
+
+function getAccessibleClubs(userId: string, role: string) {
+  if (role === 'admin') return CLUBS
+  return CLUBS.filter(
+    (c) => c.memberIds.includes(userId) || c.advisorId === userId
+  )
+}
 
 function formatTime(iso: string) {
   const d = new Date(iso)
@@ -55,6 +62,7 @@ export default function ClubChatPage({ params }: { params: Promise<{ clubId: str
 
   if (!club || !canAccess) return null
 
+  const accessibleClubs = getAccessibleClubs(currentUser.id, currentUser.role)
   const clubMessages = messages.filter((m) => m.clubId === clubId)
   const advisor = USERS.find((u) => u.id === club.advisorId)
   const members = club.memberIds.map((id) => USERS.find((u) => u.id === id)).filter(Boolean)
@@ -87,6 +95,54 @@ export default function ClubChatPage({ params }: { params: Promise<{ clubId: str
 
   return (
     <div className="-mx-8 -my-8 flex overflow-hidden" style={{ height: '100vh' }}>
+
+      {/* ── Chats sidebar ── */}
+      <div className="w-60 shrink-0 bg-white border-r border-gray-100 flex flex-col overflow-hidden">
+        <div className="px-4 py-4 border-b border-gray-100 shrink-0">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Your Chats</p>
+        </div>
+        <div className="flex-1 overflow-y-auto py-2">
+          {accessibleClubs.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
+              <MessageSquare className="w-6 h-6 text-gray-200 mb-2" />
+              <p className="text-xs text-gray-400">No chats yet</p>
+            </div>
+          ) : (
+            accessibleClubs.map((c) => {
+              const isActive = c.id === clubId
+              const lastMsg = messages.filter((m) => m.clubId === c.id).slice(-1)[0]
+              const lastSender = lastMsg ? USERS.find((u) => u.id === lastMsg.senderId) : null
+              return (
+                <Link key={c.id} href={`/chat/${c.id}`}>
+                  <div className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors ${
+                    isActive ? 'bg-blue-50' : 'hover:bg-gray-50'
+                  }`}>
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-base shrink-0 ${
+                      isActive ? 'bg-blue-100' : 'bg-gray-100'
+                    }`}>
+                      {c.iconUrl ?? '📌'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-semibold truncate leading-tight ${
+                        isActive ? 'text-blue-700' : 'text-gray-800'
+                      }`}>
+                        {c.name}
+                      </p>
+                      <p className="text-[11px] text-gray-400 truncate mt-0.5">
+                        {lastMsg
+                          ? `${lastSender?.name?.split(' ')[0] ?? '?'}: ${lastMsg.content}`
+                          : 'No messages yet'}
+                      </p>
+                    </div>
+                    {isActive && <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />}
+                  </div>
+                </Link>
+              )
+            })
+          )}
+        </div>
+      </div>
+
       {/* ── Messages column ── */}
       <div className="flex-1 flex flex-col min-w-0 bg-[#f8f9fa]">
         {/* Header */}

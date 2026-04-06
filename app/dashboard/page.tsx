@@ -2,8 +2,8 @@
 
 import Link from 'next/link'
 import { useMockAuth } from '@/lib/mock-auth'
-import { CLUBS, JOIN_REQUESTS, getUserById, getClubsByAdvisor } from '@/lib/mock-data'
-import { Users, BookOpen } from 'lucide-react'
+import { CLUBS, JOIN_REQUESTS, getUserById, getClubsByAdvisor, getNewsByClub, getEventsByClub } from '@/lib/mock-data'
+import { Users, BookOpen, Pin, Calendar } from 'lucide-react'
 import type { Club } from '@/types'
 
 function getPattern(club: Club): 'chess' | 'art' | 'robotics' {
@@ -58,6 +58,17 @@ export default function DashboardPage() {
               const advisor = getUserById(club.advisorId)
               const pattern = getPattern(club)
               const iconStyle = PATTERN_ICON_STYLES[pattern]
+
+              const allNews = getNewsByClub(club.id)
+              const pinnedUpdate = allNews
+                .filter((n) => n.isPinned)
+                .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0] ?? null
+
+              const today = new Date().toISOString().split('T')[0]
+              const nextEvent = getEventsByClub(club.id)
+                .filter((e) => e.date >= today)
+                .sort((a, b) => a.date.localeCompare(b.date))[0] ?? null
+
               return (
                 <Link key={club.id} href={`/clubs/${club.id}`}>
                   <div
@@ -67,32 +78,63 @@ export default function DashboardPage() {
                     {/* Decorative pattern */}
                     <div className={`absolute right-0 top-0 w-[40%] h-full editorial-pattern-${pattern}`} />
                     {/* Card content */}
-                    <div className="relative z-10 flex items-center gap-5">
-                      <div
-                        className="w-14 h-14 rounded-full flex items-center justify-center text-2xl flex-shrink-0"
-                        style={{ background: iconStyle.bg }}
-                      >
-                        {club.iconUrl ?? '📌'}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="mb-1">
-                          <span
-                            className="text-[10px] font-bold tracking-widest uppercase px-2 py-0.5 rounded-full"
-                            style={{ background: 'rgba(146, 71, 0, 0.1)', color: '#924700' }}
-                          >
-                            {currentUser.role}
-                          </span>
-                        </div>
-                        <h3
-                          className="font-bold text-[#191c1d] leading-tight text-lg"
-                          style={{ fontFamily: 'var(--font-manrope, sans-serif)' }}
+                    <div className="relative z-10">
+                      <div className="flex items-center gap-5">
+                        <div
+                          className="w-14 h-14 rounded-full flex items-center justify-center text-2xl flex-shrink-0"
+                          style={{ background: iconStyle.bg }}
                         >
-                          {club.name}
-                        </h3>
-                        {advisor && (
-                          <p className="text-sm font-medium text-[#727785]">Advisor: {advisor.name}</p>
-                        )}
+                          {club.iconUrl ?? '📌'}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="mb-1">
+                            <span
+                              className="text-[10px] font-bold tracking-widest uppercase px-2 py-0.5 rounded-full"
+                              style={{ background: 'rgba(146, 71, 0, 0.1)', color: '#924700' }}
+                            >
+                              {currentUser.role}
+                            </span>
+                          </div>
+                          <h3
+                            className="font-bold text-[#191c1d] leading-tight text-lg"
+                            style={{ fontFamily: 'var(--font-manrope, sans-serif)' }}
+                          >
+                            {club.name}
+                          </h3>
+                          {advisor && (
+                            <p className="text-sm font-medium text-[#727785]">Advisor: {advisor.name}</p>
+                          )}
+                        </div>
                       </div>
+
+                      {/* Pinned update + next event */}
+                      {(pinnedUpdate || nextEvent) && (
+                        <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-2 gap-3">
+                          {pinnedUpdate ? (
+                            <div className="flex items-start gap-2 min-w-0">
+                              <Pin className="w-3 h-3 mt-0.5 shrink-0" style={{ color: '#924700' }} />
+                              <div className="min-w-0">
+                                <p className="text-[10px] font-bold uppercase tracking-widest mb-0.5" style={{ color: '#924700' }}>Pinned</p>
+                                <p className="text-xs font-semibold text-[#191c1d] truncate leading-snug">{pinnedUpdate.title}</p>
+                                <p className="text-[11px] text-[#727785] leading-snug line-clamp-2 mt-0.5">{pinnedUpdate.content}</p>
+                              </div>
+                            </div>
+                          ) : <div />}
+
+                          {nextEvent ? (
+                            <div className="flex items-start gap-2 min-w-0">
+                              <Calendar className="w-3 h-3 mt-0.5 shrink-0 text-[#0058be]" />
+                              <div className="min-w-0">
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-[#0058be] mb-0.5">Next Event</p>
+                                <p className="text-xs font-semibold text-[#191c1d] truncate leading-snug">{nextEvent.title}</p>
+                                <p className="text-[11px] text-[#727785] mt-0.5">
+                                  {new Date(nextEvent.date + 'T00:00:00').toLocaleDateString('en', { month: 'short', day: 'numeric' })}
+                                </p>
+                              </div>
+                            </div>
+                          ) : <div />}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </Link>
@@ -147,42 +189,87 @@ export default function DashboardPage() {
               <p className="text-gray-500 font-medium">You are not assigned as advisor to any clubs yet.</p>
             </div>
           ) : (
-            myClubs.map((club) => {
+            myClubs.map((club, idx) => {
+              const advisor = getUserById(club.advisorId)
               const pattern = getPattern(club)
               const iconStyle = PATTERN_ICON_STYLES[pattern]
+
+              const allNews = getNewsByClub(club.id)
+              const pinnedUpdate = allNews
+                .filter((n) => n.isPinned)
+                .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0] ?? null
+
+              const today = new Date().toISOString().split('T')[0]
+              const nextEvent = getEventsByClub(club.id)
+                .filter((e) => e.date >= today)
+                .sort((a, b) => a.date.localeCompare(b.date))[0] ?? null
+
               return (
-                <Link key={club.id} href={`/clubs/${club.id}`}>
+                <Link key={club.id} href={`/clubs/${club.id}`} data-tour-id={idx === 0 ? 'tour-advisor-club-card' : undefined}>
                   <div
                     className="relative overflow-hidden bg-white rounded-xl p-6 transition-all duration-300 hover:scale-[1.01] cursor-pointer"
                     style={{ boxShadow: '0 8px 24px rgba(0,0,0,0.04)' }}
                   >
                     <div className={`absolute right-0 top-0 w-[40%] h-full editorial-pattern-${pattern}`} />
-                    <div className="relative z-10 flex items-center gap-5">
-                      <div
-                        className="w-14 h-14 rounded-full flex items-center justify-center text-2xl flex-shrink-0"
-                        style={{ background: iconStyle.bg }}
-                      >
-                        {club.iconUrl ?? '📌'}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="mb-1">
-                          <span
-                            className="text-[10px] font-bold tracking-widest uppercase px-2 py-0.5 rounded-full"
-                            style={{ background: 'rgba(146, 71, 0, 0.1)', color: '#924700' }}
-                          >
-                            advisor
-                          </span>
-                        </div>
-                        <h3
-                          className="font-bold text-[#191c1d] leading-tight text-lg"
-                          style={{ fontFamily: 'var(--font-manrope, sans-serif)' }}
+                    <div className="relative z-10">
+                      <div className="flex items-center gap-5">
+                        <div
+                          className="w-14 h-14 rounded-full flex items-center justify-center text-2xl flex-shrink-0"
+                          style={{ background: iconStyle.bg }}
                         >
-                          {club.name}
-                        </h3>
-                        <p className="text-sm font-medium text-[#727785]">
-                          {club.memberIds.length} member{club.memberIds.length !== 1 ? 's' : ''}
-                        </p>
+                          {club.iconUrl ?? '📌'}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="mb-1">
+                            <span
+                              className="text-[10px] font-bold tracking-widest uppercase px-2 py-0.5 rounded-full"
+                              style={{ background: 'rgba(146, 71, 0, 0.1)', color: '#924700' }}
+                            >
+                              advisor
+                            </span>
+                          </div>
+                          <h3
+                            className="font-bold text-[#191c1d] leading-tight text-lg"
+                            style={{ fontFamily: 'var(--font-manrope, sans-serif)' }}
+                          >
+                            {club.name}
+                          </h3>
+                          {advisor && (
+                            <p className="text-sm font-medium text-[#727785]">Advisor: {advisor.name}</p>
+                          )}
+                          <p className="text-xs text-[#727785]">
+                            {club.memberIds.length} member{club.memberIds.length !== 1 ? 's' : ''}
+                          </p>
+                        </div>
                       </div>
+
+                      {(pinnedUpdate || nextEvent) && (
+                        <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-2 gap-3">
+                          {pinnedUpdate ? (
+                            <div className="flex items-start gap-2 min-w-0">
+                              <Pin className="w-3 h-3 mt-0.5 shrink-0" style={{ color: '#924700' }} />
+                              <div className="min-w-0">
+                                <p className="text-[10px] font-bold uppercase tracking-widest mb-0.5" style={{ color: '#924700' }}>Pinned</p>
+                                <p className="text-xs font-semibold text-[#191c1d] truncate leading-snug">{pinnedUpdate.title}</p>
+                                <p className="text-[11px] text-[#727785] leading-snug line-clamp-2 mt-0.5">{pinnedUpdate.content}</p>
+                              </div>
+                            </div>
+                          ) : <div />}
+
+                          {nextEvent ? (
+                            <div className="flex items-start gap-2 min-w-0">
+                              <Calendar className="w-3 h-3 mt-0.5 shrink-0 text-[#0058be]" />
+                              <div className="min-w-0">
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-[#0058be] mb-0.5">Next Event</p>
+                                <p className="text-xs font-semibold text-[#191c1d] truncate leading-snug">{nextEvent.title}</p>
+                                <p className="text-[11px] text-[#727785] mt-0.5">
+                                  {new Date(nextEvent.date + 'T00:00:00').toLocaleDateString('en', { month: 'short', day: 'numeric' })}
+                                </p>
+                              </div>
+                            </div>
+                          ) : <div />}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </Link>

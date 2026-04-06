@@ -14,6 +14,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/elections':  'Elections',
   '/profile':    'Profile',
   '/admin':      'Admin',
+  '/settings':   'Settings',
 }
 
 function usePageTitle(pathname: string) {
@@ -45,7 +46,9 @@ export default function TopBar() {
         </div>
         <div className="flex items-center gap-4 text-slate-500">
           <Bell className="w-5 h-5 cursor-pointer hover:text-[#0058be] transition-colors" />
-          <Settings className="w-5 h-5 cursor-pointer hover:text-[#0058be] transition-colors" />
+          <Link href="/settings" data-tour-id="tour-settings">
+            <Settings className="w-5 h-5 cursor-pointer hover:text-[#0058be] transition-colors" />
+          </Link>
           <Link href="/profile">
             <Avatar name={currentUser.name} size="sm" />
           </Link>

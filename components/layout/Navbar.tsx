@@ -4,8 +4,9 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useMockAuth } from '@/lib/mock-auth'
 import { USERS } from '@/lib/mock-data'
-import { GraduationCap, LayoutDashboard, Calendar, FileText, Compass, User, ShieldCheck, MessageSquare } from 'lucide-react'
+import { GraduationCap, LayoutDashboard, Calendar, FileText, Compass, User, ShieldCheck, MessageSquare, Settings } from 'lucide-react'
 import Avatar from '@/components/Avatar'
+import { HelpButton } from '@/components/HelpTour'
 
 const ROLE_BADGE: Record<string, string> = {
   admin:   'bg-red-100 text-red-700',
@@ -14,13 +15,13 @@ const ROLE_BADGE: Record<string, string> = {
 }
 
 const NAV_ITEMS = [
-  { href: '/dashboard',  icon: LayoutDashboard, label: 'My Clubs',       roles: ['student', 'advisor'] },
-  { href: '/events',     icon: Calendar,        label: 'Events',          roles: ['student', 'advisor', 'admin'] },
-  { href: '/chat',       icon: MessageSquare,   label: 'Chat',            roles: ['student', 'advisor', 'admin'] },
-  { href: '/elections',  icon: FileText,        label: 'Elections',       roles: ['student', 'advisor', 'admin'] },
-  { href: '/clubs',      icon: Compass,         label: 'All Clubs',       roles: ['student', 'advisor', 'admin'] },
-  { href: '/profile',    icon: User,            label: 'Profile',         roles: ['student', 'advisor', 'admin'] },
-  { href: '/admin',      icon: ShieldCheck,     label: 'Admin',           roles: ['admin'] },
+  { href: '/dashboard',  icon: LayoutDashboard, label: 'My Clubs',       roles: ['student', 'advisor'],           tourId: 'tour-nav-dashboard' },
+  { href: '/events',     icon: Calendar,        label: 'Events',          roles: ['student', 'advisor', 'admin'],  tourId: 'tour-nav-events' },
+  { href: '/chat',       icon: MessageSquare,   label: 'Chat',            roles: ['student', 'advisor', 'admin'],  tourId: 'tour-nav-chat' },
+  { href: '/elections',  icon: FileText,        label: 'Elections',       roles: ['student', 'advisor', 'admin'],  tourId: 'tour-nav-elections' },
+  { href: '/clubs',      icon: Compass,         label: 'All Clubs',       roles: ['student', 'advisor', 'admin'],  tourId: 'tour-nav-clubs' },
+  { href: '/profile',    icon: User,            label: 'Profile',         roles: ['student', 'advisor', 'admin'],  tourId: 'tour-nav-profile' },
+  { href: '/admin',      icon: ShieldCheck,     label: 'Admin',           roles: ['admin'],                        tourId: 'tour-nav-admin' },
 ]
 
 export default function Sidebar() {
@@ -60,12 +61,13 @@ export default function Sidebar() {
 
       {/* Nav items */}
       <nav className="flex-1 space-y-1">
-        {visibleItems.map(({ href, icon: Icon, label }) => {
+        {visibleItems.map(({ href, icon: Icon, label, tourId }) => {
           const active = isActive(href)
           return (
             <Link
               key={href}
               href={href}
+              data-tour-id={tourId}
               className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 ${
                 active
                   ? 'text-[#0058be] font-bold bg-blue-50/60 border-r-4 border-[#0058be]'
@@ -80,6 +82,23 @@ export default function Sidebar() {
             </Link>
           )
         })}
+
+        {/* Settings link */}
+        <Link
+          href="/settings"
+          data-tour-id="tour-nav-settings"
+          className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 ${
+            pathname === '/settings'
+              ? 'text-[#0058be] font-bold bg-blue-50/60 border-r-4 border-[#0058be]'
+              : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
+          }`}
+        >
+          <Settings style={{ width: '1.1rem', height: '1.1rem' }} className="shrink-0" />
+          <span className="text-xs font-semibold uppercase tracking-widest">Settings</span>
+        </Link>
+
+        {/* Help button — only shown for non-admin */}
+        {currentUser.role !== 'admin' && <HelpButton />}
       </nav>
 
       {/* User section */}
