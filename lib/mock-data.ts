@@ -292,6 +292,14 @@ export function getAttendanceByClub(clubId: string): AttendanceRecord[] {
   return ATTENDANCE_RECORDS.filter((r) => r.clubId === clubId)
 }
 
+export function getAttendanceByUser(userId: string): AttendanceRecord[] {
+  return ATTENDANCE_RECORDS.filter((r) => r.userId === userId)
+}
+
+export function getAttendanceByUserAndClub(userId: string, clubId: string): AttendanceRecord[] {
+  return ATTENDANCE_RECORDS.filter((r) => r.userId === userId && r.clubId === clubId)
+}
+
 export function getRequestsByClub(clubId: string): JoinRequest[] {
   return JOIN_REQUESTS.filter((r) => r.clubId === clubId)
 }

@@ -10,7 +10,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Users, Shield, Vote, Plus, XCircle } from 'lucide-react'
+import Link from 'next/link'
+import { applyOverrides } from '@/lib/user-store'
+import { getClubsByMember } from '@/lib/mock-data'
+import Avatar from '@/components/Avatar'
+import { Users, Shield, Vote, Plus, XCircle, GraduationCap } from 'lucide-react'
 
 export default function AdminPage() {
   const { currentUser } = useMockAuth()
@@ -130,6 +134,59 @@ export default function AdminPage() {
                 )
               })}
             </div>
+          </div>
+        </div>
+
+        {/* Student Roster */}
+        <div className="border-t pt-8 mb-10">
+          <div className="flex items-center gap-3 mb-4">
+            <GraduationCap className="w-5 h-5 text-green-600" />
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">Student Roster</h2>
+              <p className="text-sm text-gray-500">All enrolled students — click a name to view or edit their profile.</p>
+            </div>
+          </div>
+          <div className="overflow-hidden rounded-xl border bg-white">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-gray-50 text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  <th className="px-4 py-3 text-left">Student</th>
+                  <th className="px-4 py-3 text-left">Email</th>
+                  <th className="px-4 py-3 text-left">Clubs</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {USERS.map(applyOverrides).filter((u) => u.role === 'student').map((student) => {
+                  const clubs = getClubsByMember(student.id)
+                  return (
+                    <tr key={student.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-3">
+                        <Link href={`/profile/${student.id}`} className="flex items-center gap-2 group">
+                          <Avatar name={student.name} size="sm" />
+                          <span className="font-medium text-gray-900 group-hover:text-blue-600 group-hover:underline">
+                            {student.name}
+                          </span>
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3 text-gray-500">{student.email}</td>
+                      <td className="px-4 py-3">
+                        {clubs.length === 0 ? (
+                          <span className="text-gray-400 italic">No clubs</span>
+                        ) : (
+                          <div className="flex flex-wrap gap-1">
+                            {clubs.map((c) => (
+                              <span key={c.id} className="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                                {c.iconUrl} {c.name}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
 
