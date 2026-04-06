@@ -1,6 +1,7 @@
 'use client'
 
 import { use, useState } from 'react'
+import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { useMockAuth } from '@/lib/mock-auth'
 import {
@@ -504,7 +505,14 @@ export default function ClubDetailPage({ params }: PageProps) {
                 <span className="text-5xl">{club.iconUrl ?? '📌'}</span>
                 <div>
                   <h1 className="text-2xl font-bold text-gray-900">{club.name}</h1>
-                  {advisor && <p className="text-sm text-gray-500 mt-1">Advisor: {advisor.name}</p>}
+                  {advisor && (
+                    <p className="text-sm text-gray-500 mt-1">
+                      Advisor:{' '}
+                      <Link href={`/profile/${advisor.id}`} className="hover:text-blue-600 hover:underline">
+                        {advisor.name}
+                      </Link>
+                    </p>
+                  )}
                   <div className="flex items-center gap-2 mt-2 flex-wrap">
                     {club.tags?.map((tag) => (
                       <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
@@ -624,7 +632,7 @@ export default function ClubDetailPage({ params }: PageProps) {
                   return (
                     <div key={member.id} className="flex items-center justify-between py-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-700">{member.name}</span>
+                        <Link href={`/profile/${member.id}`} className="text-sm text-gray-700 hover:text-blue-600 hover:underline">{member.name}</Link>
                         {canCreate && (
                           <span className="text-xs text-purple-600 bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded">
                             Event creator
