@@ -53,7 +53,7 @@ export default function TopBar() {
           <Link href="/profile">
             <Avatar name={currentUser.name} size="sm" />
           </Link>
-          <UserButton afterSignOutUrl="/sign-in" />
+          <UserButton />
         </div>
       </div>
     </header>
