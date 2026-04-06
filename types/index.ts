@@ -128,3 +128,16 @@ export interface SchoolElection {
   createdAt: string
   isOpen: boolean
 }
+
+export type ClubFormType = 'signup' | 'nomination' | 'survey' | 'approval'
+
+export interface ClubForm {
+  id: string
+  clubId: string
+  title: string
+  description: string
+  formType: ClubFormType
+  isOpen: boolean
+  closesAt: string | null
+  createdAt: string
+}
