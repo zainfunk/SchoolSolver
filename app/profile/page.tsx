@@ -105,11 +105,11 @@ export default function ProfilePage() {
   const isOwnProfile = profileUser.id === currentUser.id
 
   const [profile, setProfileState] = useState({ bio: '', skills: [] as string[], interests: [] as string[], socials: [] as PersonalSocialLink[] })
-  useEffect(() => { setProfileState(getProfile(profileUser.id)) }, [profileUser.id])
+  useEffect(() => { getProfile(profileUser.id).then(setProfileState) }, [profileUser.id])
 
-  function saveProfile(partial: Parameters<typeof setProfile>[1]) {
-    setProfile(profileUser.id, partial)
-    setProfileState(getProfile(profileUser.id))
+  async function saveProfile(partial: Parameters<typeof setProfile>[1]) {
+    await setProfile(profileUser.id, partial)
+    getProfile(profileUser.id).then(setProfileState)
   }
 
   // ---- Name editing ----
@@ -133,7 +133,7 @@ export default function ProfilePage() {
 
   // ---- Bio editing ----
   const [bioInput, setBioInput] = useState('')
-  useEffect(() => { setBioInput(getProfile(profileUser.id).bio) }, [profileUser.id])
+  useEffect(() => { getProfile(profileUser.id).then((p) => setBioInput(p.bio)) }, [profileUser.id])
   function saveBio() {
     if (bioInput !== profile.bio) saveProfile({ bio: bioInput })
   }

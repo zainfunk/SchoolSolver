@@ -86,12 +86,12 @@ export default function ViewProfilePage({ params }: PageProps) {
     bio: '', skills: [] as string[], interests: [] as string[], socials: [] as PersonalSocialLink[],
   })
   useEffect(() => {
-    setProfileState(getProfile(profileUser.id))
+    getProfile(profileUser.id).then(setProfileState)
   }, [profileUser.id])
 
-  function persistProfile(partial: Parameters<typeof saveProfileStore>[1]) {
-    saveProfileStore(profileUser.id, partial)
-    setProfileState(getProfile(profileUser.id))
+  async function persistProfile(partial: Parameters<typeof saveProfileStore>[1]) {
+    await saveProfileStore(profileUser.id, partial)
+    getProfile(profileUser.id).then(setProfileState)
   }
 
   // ---- Name editing (admin only) ----
