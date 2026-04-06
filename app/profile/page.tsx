@@ -5,13 +5,13 @@ import Link from 'next/link'
 import { useMockAuth } from '@/lib/mock-auth'
 import { USERS, getClubsByMember, getClubsByAdvisor, getAttendanceByUserAndClub, getUserById } from '@/lib/mock-data'
 import { setName, setEmail, applyOverrides } from '@/lib/user-store'
-import { getProfile, setProfile, PRESET_SKILLS, PRESET_INTERESTS, SOCIAL_PLATFORMS, PersonalSocialLink } from '@/lib/profile-store'
+import { getProfile, setProfile, SOCIAL_PLATFORMS, PersonalSocialLink } from '@/lib/profile-store'
+import { getAdminSettings } from '@/lib/settings-store'
 import { getRecordsByClub } from '@/lib/attendance-store'
 import { AttendanceRecord } from '@/types'
 import Avatar from '@/components/Avatar'
 import { Input } from '@/components/ui/input'
 import AttendanceCalendar from '@/components/profile/AttendanceCalendar'
-import TagEditor from '@/components/profile/TagEditor'
 import {
   Pencil, Check, X, Shield, Plus, Trash2,
   ExternalLink, EyeOff, Users, Mail, BadgeCheck,
@@ -113,14 +113,13 @@ export default function ProfilePage() {
   }
 
   // ---- Name editing ----
-  const [editingName, setEditingName] = useState(false)
-  const [nameInput, setNameInput] = useState('')
+  const [nameInput, setNameInput] = useState(profileUser.name)
+  useEffect(() => { setNameInput(applyOverrides(USERS.find((u) => u.id === profileUser.id)!).name) }, [profileUser.id])
   function saveName() {
-    if (!nameInput.trim()) return
+    if (!nameInput.trim() || nameInput.trim() === profileUser.name) return
     setName(profileUser.id, nameInput.trim())
     refresh()
     if (profileUser.id === currentUser.id) setCurrentUser({ ...currentUser, name: nameInput.trim() })
-    setEditingName(false)
   }
 
   // ---- Email editing ----
@@ -135,8 +134,11 @@ export default function ProfilePage() {
   }
 
   // ---- Bio editing ----
-  const [editingBio, setEditingBio] = useState(false)
   const [bioInput, setBioInput] = useState('')
+  useEffect(() => { setBioInput(getProfile(profileUser.id).bio) }, [profileUser.id])
+  function saveBio() {
+    if (bioInput !== profile.bio) saveProfile({ bio: bioInput })
+  }
 
   // ---- Socials editing ----
   const [editingSocials, setEditingSocials] = useState(false)
@@ -183,7 +185,6 @@ export default function ProfilePage() {
   const earnedCount = achievements.filter((a) => a.earned).length
 
   const [tab, setTab] = useState<Tab>('overview')
-  const [editingProfile, setEditingProfile] = useState(false)
 
   const tabs: { key: Tab; label: string }[] = [
     { key: 'overview', label: 'OVERVIEW' },
@@ -242,28 +243,24 @@ export default function ProfilePage() {
               </div>
               <div>
                 {/* Name */}
-                {editingProfile && isAdmin && editingName ? (
-                  <div className="flex items-center gap-2 mb-1">
-                    <Input value={nameInput} onChange={(e) => setNameInput(e.target.value)}
-                      className="h-8 text-sm max-w-xs" autoFocus onKeyDown={(e) => e.key === 'Enter' && saveName()} />
-                    <button onClick={saveName} className="text-emerald-600"><Check className="w-4 h-4" /></button>
-                    <button onClick={() => setEditingName(false)} className="text-[#727785]"><X className="w-4 h-4" /></button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  {canEdit ? (
+                    <Input
+                      value={nameInput}
+                      onChange={(e) => setNameInput(e.target.value)}
+                      onBlur={saveName}
+                      onKeyDown={(e) => e.key === 'Enter' && saveName()}
+                      className="h-8 text-xl font-bold max-w-xs"
+                      style={{ fontFamily: 'var(--font-manrope)', letterSpacing: '-0.02em' }}
+                    />
+                  ) : (
                     <h1 className="text-2xl font-bold text-[#191c1d]"
                       style={{ fontFamily: 'var(--font-manrope)', letterSpacing: '-0.02em' }}>
                       {profileUser.name}
                     </h1>
-                    <BadgeCheck className="w-5 h-5 shrink-0" style={{ color: accent }} />
-                    {editingProfile && isAdmin && (
-                      <button onClick={() => { setNameInput(profileUser.name); setEditingName(true) }}
-                        className="text-[#727785] hover:text-[#191c1d]">
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                )}
+                  )}
+                  <BadgeCheck className="w-5 h-5 shrink-0" style={{ color: accent }} />
+                </div>
                 {/* Role */}
                 <div className="flex items-center gap-2 mt-1">
                   <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border ${ROLE_BADGE[profileUser.role]}`}>
@@ -276,14 +273,6 @@ export default function ProfilePage() {
 
             {/* Action buttons */}
             <div className="flex items-center gap-2 shrink-0">
-              {canEdit && (
-                <button onClick={() => setEditingProfile((v) => !v)}
-                  className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl transition-all"
-                  style={{ background: editingProfile ? '#0058be' : '#f3f4f5', color: editingProfile ? '#ffffff' : '#191c1d' }}>
-                  <Pencil style={{ width: '0.75rem', height: '0.75rem' }} />
-                  {editingProfile ? 'Done' : 'Edit'}
-                </button>
-              )}
               <a href={`mailto:${profileUser.email}`}
                 className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl text-[#191c1d] transition-all"
                 style={{ background: '#f3f4f5' }}>
@@ -312,30 +301,20 @@ export default function ProfilePage() {
 
           {/* Bio */}
           <div className="mb-4">
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-[#727785]">Bio</label>
-              {canEdit && editingProfile && !editingBio && (
-                <button onClick={() => { setBioInput(profile.bio); setEditingBio(true) }}
-                  className="text-[#727785] hover:text-[#191c1d]">
-                  <Pencil className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-            {editingBio ? (
-              <div>
-                <textarea value={bioInput} onChange={(e) => setBioInput(e.target.value)} rows={3}
-                  placeholder="Write a short bio…"
-                  className="w-full text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#0058be] resize-none"
-                  style={{ background: '#f3f4f5', border: 'none' }} autoFocus />
-                <div className="flex gap-3 mt-1.5">
-                  <button onClick={() => { saveProfile({ bio: bioInput }); setEditingBio(false) }}
-                    className="text-xs text-emerald-700 font-semibold hover:underline">Save</button>
-                  <button onClick={() => setEditingBio(false)} className="text-xs text-[#727785]">Cancel</button>
-                </div>
-              </div>
+            <label className="text-[10px] font-bold uppercase tracking-widest text-[#727785] block mb-1.5">Bio</label>
+            {canEdit ? (
+              <textarea
+                value={bioInput}
+                onChange={(e) => setBioInput(e.target.value)}
+                onBlur={saveBio}
+                rows={3}
+                placeholder="Write a short bio…"
+                className="w-full text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#0058be] resize-none"
+                style={{ background: '#f3f4f5', border: 'none' }}
+              />
             ) : (
               <p className="text-sm text-[#424754] leading-relaxed">
-                {profile.bio || <span className="text-[#a0a3ad] italic">No bio yet.{canEdit ? ' Click "Edit Profile" to add one.' : ''}</span>}
+                {profile.bio || <span className="text-[#a0a3ad] italic">No bio yet.</span>}
               </p>
             )}
           </div>
@@ -344,7 +323,7 @@ export default function ProfilePage() {
           <div className="mb-4">
             <label className="text-[10px] font-bold uppercase tracking-widest text-[#727785] block mb-1.5">Contact</label>
             <div className="flex items-center gap-2">
-              {editingProfile && editingEmail ? (
+              {editingEmail ? (
                 <>
                   <Input value={emailInput} onChange={(e) => setEmailInput(e.target.value)}
                     className="h-7 text-xs max-w-xs" autoFocus onKeyDown={(e) => e.key === 'Enter' && saveEmail()} />
@@ -354,7 +333,7 @@ export default function ProfilePage() {
               ) : (
                 <>
                   <span className="text-sm text-[#424754]">{profileUser.email}</span>
-                  {canEdit && editingProfile && (
+                  {canEdit && (
                     <button onClick={() => { setEmailInput(profileUser.email); setEditingEmail(true) }}
                       className="text-[#727785] hover:text-[#191c1d]">
                       <Pencil className="w-3 h-3" />
@@ -365,11 +344,12 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Socials */}
+          {/* Socials — hidden for students when admin has disabled student socials */}
+          {(isAdmin || profileUser.role !== 'student' || getAdminSettings().studentSocialsEnabled) && (
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="text-[10px] font-bold uppercase tracking-widest text-[#727785]">Socials</label>
-              {canEdit && editingProfile && !editingSocials && (
+              {canEdit && !editingSocials && (
                 <button onClick={startEditSocials} className="text-[#727785] hover:text-[#191c1d]">
                   <Pencil className="w-3.5 h-3.5" />
                 </button>
@@ -430,6 +410,7 @@ export default function ProfilePage() {
               </div>
             )}
           </div>
+          )}
         </div>
       </div>
 
@@ -452,30 +433,6 @@ export default function ProfilePage() {
         {/* ── Tab: Overview ── */}
         {tab === 'overview' && (
           <>
-            {/* Skills */}
-            <div className="rounded-2xl p-5"
-              style={{ background: '#ffffff', boxShadow: '0 8px 24px rgba(0,0,0,0.04)' }}>
-              <TagEditor
-                label="Skills & Expertise"
-                presets={PRESET_SKILLS}
-                selected={profile.skills}
-                onChange={(skills) => saveProfile({ skills })}
-                editable={canEdit}
-              />
-            </div>
-
-            {/* Interests */}
-            <div className="rounded-2xl p-5"
-              style={{ background: '#ffffff', boxShadow: '0 8px 24px rgba(0,0,0,0.04)' }}>
-              <TagEditor
-                label="Interests"
-                presets={PRESET_INTERESTS}
-                selected={profile.interests}
-                onChange={(interests) => saveProfile({ interests })}
-                editable={canEdit}
-              />
-            </div>
-
             {/* Active memberships */}
             {displayClubs.length > 0 && (
               <div className="rounded-2xl p-5"

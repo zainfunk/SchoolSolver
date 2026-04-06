@@ -161,3 +161,107 @@
   mask-image: linear-gradient(to right, black 60%, transparent 100%);
   -webkit-mask-image: linear-gradient(to right, black 60%, transparent 100%);
 }
+
+/* ── Dark mode structural overrides ─────────────────────────────────────── */
+html.dark body {
+  background-color: #0f172a !important;
+  color: #e2e8f0 !important;
+}
+
+html.dark main {
+  background-color: #0f172a !important;
+}
+
+html.dark aside {
+  background-color: #1e293b !important;
+  border-color: rgba(255,255,255,0.06) !important;
+}
+
+html.dark aside .text-slate-900,
+html.dark aside h2 {
+  color: #f1f5f9 !important;
+}
+
+html.dark aside .text-slate-500 {
+  color: #94a3b8 !important;
+}
+
+html.dark aside .bg-slate-100,
+html.dark aside .hover\:bg-slate-100:hover {
+  background-color: rgba(255,255,255,0.06) !important;
+}
+
+html.dark aside .bg-blue-50\/60 {
+  background-color: rgba(0,88,190,0.2) !important;
+}
+
+html.dark aside .bg-slate-50 {
+  background-color: #1e293b !important;
+}
+
+html.dark aside select {
+  background-color: rgba(255,255,255,0.08) !important;
+  color: #94a3b8 !important;
+}
+
+html.dark header {
+  background-color: rgba(15,23,42,0.85) !important;
+  border-color: rgba(255,255,255,0.06) !important;
+}
+
+html.dark header .text-slate-900 {
+  color: #f1f5f9 !important;
+}
+
+html.dark header input {
+  background-color: #1e293b !important;
+  color: #e2e8f0 !important;
+}
+
+html.dark header .text-slate-400,
+html.dark header .text-slate-500 {
+  color: #64748b !important;
+}
+
+/* Card and panel backgrounds */
+html.dark .rounded-2xl,
+html.dark .rounded-xl,
+html.dark .rounded-3xl {
+  border-color: rgba(255,255,255,0.06) !important;
+}
+
+html.dark .bg-white {
+  background-color: #1e293b !important;
+}
+
+html.dark .bg-\[\#f8f9fa\],
+html.dark .bg-\[\#f3f4f5\] {
+  background-color: #263045 !important;
+}
+
+html.dark .text-\[\#191c1d\],
+html.dark .text-gray-900,
+html.dark .text-slate-900 {
+  color: #f1f5f9 !important;
+}
+
+html.dark .text-\[\#424754\],
+html.dark .text-gray-700,
+html.dark .text-\[\#727785\] {
+  color: #94a3b8 !important;
+}
+
+html.dark .text-gray-500,
+html.dark .text-gray-400 {
+  color: #64748b !important;
+}
+
+html.dark .border-gray-100,
+html.dark .border-gray-200 {
+  border-color: rgba(255,255,255,0.06) !important;
+}
+
+html.dark .border-slate-100,
+html.dark .border-slate-200 {
+  border-color: rgba(255,255,255,0.06) !important;
+}

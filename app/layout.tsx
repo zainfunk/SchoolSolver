@@ -5,6 +5,8 @@ import { MockAuthProvider } from "@/lib/mock-auth";
 import { ChatProvider } from "@/lib/chat-store";
 import Navbar from "@/components/layout/Navbar";
 import TopBar from "@/components/layout/TopBar";
+import SettingsProvider from "@/components/SettingsProvider";
+import TourWrapper from "@/components/TourWrapper";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -46,9 +48,13 @@ export default function RootLayout({
       <body className="min-h-full bg-[#f8f9fa]">
         <MockAuthProvider>
           <ChatProvider>
-            <Navbar />
-            <TopBar />
-            <main className="ml-64 pt-16 min-h-screen px-8 py-8 overflow-y-auto">{children}</main>
+            <SettingsProvider>
+              <TourWrapper>
+                <Navbar />
+                <TopBar />
+                <main className="ml-64 pt-16 min-h-screen px-8 py-8 overflow-y-auto">{children}</main>
+              </TourWrapper>
+            </SettingsProvider>
           </ChatProvider>
         </MockAuthProvider>
       </body>

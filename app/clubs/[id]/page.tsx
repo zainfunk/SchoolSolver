@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useState } from 'react'
+import { use, useState, useRef } from 'react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { useMockAuth } from '@/lib/mock-auth'
@@ -18,7 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Users, Clock, MapPin, Globe, Calendar, Crown, CheckCircle, XCircle,
   ClockIcon, Vote, Plus, Trash2, UserCheck, Pencil, Newspaper, Camera,
-  MessageCircle, Tv, Video, Link as LinkIcon, QrCode, Copy, ArrowLeft,
+  MessageCircle, Tv, Video, Link as LinkIcon, QrCode, Copy, ArrowLeft, Mail,
 } from 'lucide-react'
 import { JoinRequest, LeadershipPosition, Poll, ClubEvent, ClubNews, SocialLink, SocialPlatform, MeetingTime, AttendanceRecord, AttendanceSession } from '@/types'
 import Avatar from '@/components/Avatar'
@@ -61,6 +61,7 @@ export default function ClubDetailPage({ params }: PageProps) {
   // Edit mode for club header info (advisor)
   const [editMode, setEditMode] = useState(false)
   const [editIcon, setEditIcon] = useState('')
+  const imageInputRef = useRef<HTMLInputElement>(null)
   const [editDescription, setEditDescription] = useState('')
   const [editTags, setEditTags] = useState('')
   const [editSocialLinks, setEditSocialLinks] = useState<SocialLink[]>([])
@@ -469,8 +470,47 @@ export default function ClubDetailPage({ params }: PageProps) {
             <div className="max-w-xl space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Icon (emoji)</label>
-                  <Input value={editIcon} onChange={(e) => setEditIcon(e.target.value)} placeholder="🤖" className="text-2xl h-10" />
+                  <label className="text-xs text-gray-500 mb-1 block">Club Image</label>
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden shrink-0">
+                      {editIcon && (editIcon.startsWith('data:') || editIcon.startsWith('http')) ? (
+                        <img src={editIcon} alt="Club icon" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-2xl">{editIcon || '📌'}</span>
+                      )}
+                    </div>
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => imageInputRef.current?.click()}
+                        className="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors underline"
+                      >
+                        Upload image
+                      </button>
+                      {editIcon && (editIcon.startsWith('data:') || editIcon.startsWith('http')) && (
+                        <button
+                          type="button"
+                          onClick={() => setEditIcon('')}
+                          className="block text-xs text-gray-400 hover:text-red-400 transition-colors mt-0.5"
+                        >
+                          Remove
+                        </button>
+                      )}
+                      <input
+                        ref={imageInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (!file) return
+                          const reader = new FileReader()
+                          reader.onload = (ev) => setEditIcon(ev.target?.result as string)
+                          reader.readAsDataURL(file)
+                        }}
+                      />
+                    </div>
+                  </div>
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Tags (comma separated)</label>
@@ -537,8 +577,12 @@ export default function ClubDetailPage({ params }: PageProps) {
           </div>
 
           <div className="flex items-center gap-5 mb-4">
-            <div className="w-16 h-16 rounded-2xl bg-white shadow-lg flex items-center justify-center text-3xl shrink-0">
-              {club.iconUrl ?? '📌'}
+            <div className="w-16 h-16 rounded-2xl bg-white shadow-lg flex items-center justify-center text-3xl shrink-0 overflow-hidden">
+              {club.iconUrl && (club.iconUrl.startsWith('data:') || club.iconUrl.startsWith('http')) ? (
+                <img src={club.iconUrl} alt={club.name} className="w-full h-full object-cover" />
+              ) : (
+                club.iconUrl ?? '📌'
+              )}
             </div>
             <h1
               className="font-extrabold tracking-tight text-slate-900 leading-none"
@@ -652,6 +696,36 @@ export default function ClubDetailPage({ params }: PageProps) {
 
         {/* ── Left: Leadership + Members ── */}
         <aside className="col-span-3 space-y-5">
+
+          {/* Advisor widget */}
+          {advisor && (
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-4" style={{ fontFamily: 'var(--font-manrope)' }}>
+                Faculty Advisor
+              </p>
+              <div className="flex items-center gap-3 mb-3">
+                <Avatar name={advisor.name} size="md" />
+                <div className="min-w-0">
+                  <Link href={`/profile/${advisor.id}`}
+                    className="font-bold text-slate-900 hover:text-[#0058be] transition-colors text-sm leading-tight block truncate"
+                    style={{ fontFamily: 'var(--font-manrope)' }}>
+                    {advisor.name}
+                  </Link>
+                  <span className="text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600">
+                    Advisor
+                  </span>
+                </div>
+              </div>
+              <a
+                href={`mailto:${advisor.email}`}
+                className="flex items-center justify-center gap-2 w-full py-2 rounded-xl text-xs font-semibold text-[#0058be] hover:bg-blue-50 transition-colors border border-blue-100"
+              >
+                <Mail className="w-3.5 h-3.5" />
+                Contact Advisor
+              </a>
+            </div>
+          )}
+
           {/* Leadership positions */}
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
             <h3 className="text-xl font-bold text-slate-900 mb-6" style={{ fontFamily: 'var(--font-manrope)' }}>
@@ -849,7 +923,7 @@ export default function ClubDetailPage({ params }: PageProps) {
         </section>
 
         {/* ── Right: Events + Schedule ── */}
-        <section className="col-span-3 space-y-5">
+        <section className="col-span-3 space-y-5" data-tour-id="tour-events-section">
           {/* Upcoming Events */}
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
             <div className="flex items-center justify-between mb-6">
@@ -1168,7 +1242,7 @@ export default function ClubDetailPage({ params }: PageProps) {
 
         {/* All Attendance — advisor only */}
         {isAdvisor && (
-          <div className="bg-white rounded-2xl p-7 shadow-sm border border-slate-100">
+          <div className="bg-white rounded-2xl p-7 shadow-sm border border-slate-100" data-tour-id="tour-attendance-section">
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2" style={{ fontFamily: 'var(--font-manrope)' }}>
                 <CheckCircle className="w-5 h-5" />Attendance
