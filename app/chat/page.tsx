@@ -1,24 +1,33 @@
 'use client'
 
 import Link from 'next/link'
+import { useState, useEffect } from 'react'
 import { useMockAuth } from '@/lib/mock-auth'
 import { useChatStore } from '@/lib/chat-store'
 import { CLUBS, USERS } from '@/lib/mock-data'
+import { supabase } from '@/lib/supabase'
 import Avatar from '@/components/Avatar'
 import { MessageSquare } from 'lucide-react'
-
-function getAccessibleClubs(userId: string, role: string) {
-  if (role === 'admin') return CLUBS
-  return CLUBS.filter(
-    (c) => c.memberIds.includes(userId) || c.advisorId === userId
-  )
-}
 
 export default function ChatPage() {
   const { currentUser } = useMockAuth()
   const { messages } = useChatStore()
+  const [myClubIds, setMyClubIds] = useState<string[]>([])
 
-  const clubs = getAccessibleClubs(currentUser.id, currentUser.role)
+  useEffect(() => {
+    if (!currentUser.id) return
+    supabase.from('memberships').select('club_id').eq('user_id', currentUser.id).then(({ data }) => {
+      setMyClubIds((data ?? []).map((r) => r.club_id))
+    })
+  }, [currentUser.id])
+
+  const clubs = currentUser.role === 'admin'
+    ? CLUBS
+    : CLUBS.filter((c) =>
+        myClubIds.includes(c.id) ||
+        c.memberIds.includes(currentUser.id) ||
+        c.advisorId === currentUser.id
+      )
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -52,18 +61,12 @@ export default function ChatPage() {
             return (
               <Link key={club.id} href={`/chat/${club.id}`}>
                 <div className="flex items-center gap-4 p-4 bg-white rounded-xl border border-gray-100 hover:border-blue-100 hover:shadow-[0_4px_16px_rgba(0,88,190,0.06)] transition-all cursor-pointer group">
-                  {/* Club icon */}
                   <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-xl shrink-0">
                     {club.iconUrl ?? '📌'}
                   </div>
-
-                  {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
-                      <p
-                        className="font-semibold text-gray-900 truncate"
-                        style={{ fontFamily: 'var(--font-manrope)' }}
-                      >
+                      <p className="font-semibold text-gray-900 truncate" style={{ fontFamily: 'var(--font-manrope)' }}>
                         {club.name}
                       </p>
                       {last && (
@@ -78,8 +81,6 @@ export default function ChatPage() {
                         : 'No messages yet — say hello!'}
                     </p>
                   </div>
-
-                  {/* Member count */}
                   <div className="flex items-center gap-1.5 shrink-0">
                     {advisor && <Avatar name={advisor.name} size="sm" />}
                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">

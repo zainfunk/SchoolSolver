@@ -6,15 +6,9 @@ import Link from 'next/link'
 import { useMockAuth } from '@/lib/mock-auth'
 import { useChatStore } from '@/lib/chat-store'
 import { CLUBS, USERS } from '@/lib/mock-data'
+import { supabase } from '@/lib/supabase'
 import Avatar from '@/components/Avatar'
 import { ArrowLeft, Send, MessageSquare } from 'lucide-react'
-
-function getAccessibleClubs(userId: string, role: string) {
-  if (role === 'admin') return CLUBS
-  return CLUBS.filter(
-    (c) => c.memberIds.includes(userId) || c.advisorId === userId
-  )
-}
 
 function formatTime(iso: string) {
   const d = new Date(iso)
@@ -38,31 +32,42 @@ export default function ClubChatPage({ params }: { params: Promise<{ clubId: str
   const { currentUser } = useMockAuth()
   const { messages, sendMessage } = useChatStore()
   const [draft, setDraft] = useState('')
+  const [myClubIds, setMyClubIds] = useState<string[]>([])
+  const [accessChecked, setAccessChecked] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const club = CLUBS.find((c) => c.id === clubId)
 
-  // Access check
+  useEffect(() => {
+    if (!currentUser.id) return
+    supabase.from('memberships').select('club_id').eq('user_id', currentUser.id).then(({ data }) => {
+      setMyClubIds((data ?? []).map((r) => r.club_id))
+      setAccessChecked(true)
+    })
+  }, [currentUser.id])
+
   const canAccess =
     currentUser.role === 'admin' ||
+    myClubIds.includes(clubId) ||
     club?.memberIds.includes(currentUser.id) ||
     club?.advisorId === currentUser.id
 
   useEffect(() => {
-    if (!club || !canAccess) {
+    if (accessChecked && (!club || !canAccess)) {
       router.replace('/chat')
     }
-  }, [club, canAccess, router])
+  }, [accessChecked, club, canAccess, router])
 
-  // Scroll to bottom when messages update
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  if (!club || !canAccess) return null
+  if (!accessChecked || !club || !canAccess) return null
 
-  const accessibleClubs = getAccessibleClubs(currentUser.id, currentUser.role)
+  const accessibleClubs = currentUser.role === 'admin'
+    ? CLUBS
+    : CLUBS.filter((c) => myClubIds.includes(c.id) || c.memberIds.includes(currentUser.id) || c.advisorId === currentUser.id)
   const clubMessages = messages.filter((m) => m.clubId === clubId)
   const advisor = USERS.find((u) => u.id === club.advisorId)
   const members = club.memberIds.map((id) => USERS.find((u) => u.id === id)).filter(Boolean)
