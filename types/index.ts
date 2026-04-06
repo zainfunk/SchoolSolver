@@ -108,6 +108,18 @@ export interface Poll {
   isOpen: boolean
 }
 
+export interface AttendanceSession {
+  id: string
+  clubId: string
+  meetingDate: string        // YYYY-MM-DD
+  createdBy: string          // advisorId
+  expiresAt: string          // ISO timestamp
+  maxDistanceMeters: number  // 0 = no restriction
+  advisorLat?: number
+  advisorLng?: number
+  recordedUserIds: string[]  // users who already checked in
+}
+
 export interface SchoolElection {
   id: string
   positionTitle: string

@@ -7,6 +7,9 @@ import {
   CLUBS, MEMBERSHIPS, JOIN_REQUESTS, POLLS,
   getUserById, getEventsByClub, getAttendanceByClub, getNewsByClub, USERS,
 } from '@/lib/mock-data'
+import {
+  getSessionsByClub, saveSession, upsertRecord, getRecordsByClub,
+} from '@/lib/attendance-store'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,9 +17,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Users, Clock, MapPin, Globe, Calendar, Crown, CheckCircle, XCircle,
   ClockIcon, Vote, Plus, Trash2, UserCheck, Pencil, Newspaper, Camera,
-  MessageCircle, Tv, Video, Link as LinkIcon,
+  MessageCircle, Tv, Video, Link as LinkIcon, QrCode, Copy,
 } from 'lucide-react'
-import { JoinRequest, LeadershipPosition, Poll, ClubEvent, ClubNews, SocialLink, SocialPlatform, MeetingTime } from '@/types'
+import { JoinRequest, LeadershipPosition, Poll, ClubEvent, ClubNews, SocialLink, SocialPlatform, MeetingTime, AttendanceRecord, AttendanceSession } from '@/types'
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
@@ -96,12 +99,40 @@ export default function ClubDetailPage({ params }: PageProps) {
   const [pollPositionTitle, setPollPositionTitle] = useState('')
   const [pollCandidateIds, setPollCandidateIds] = useState<string[]>([])
 
+  // Attendance state (merges static mock data + localStorage records)
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>(() => {
+    const staticRecs = getAttendanceByClub(id)
+    const stored = getRecordsByClub(id)
+    const merged = [...staticRecs]
+    for (const r of stored) {
+      const idx = merged.findIndex(
+        (m) => m.clubId === r.clubId && m.userId === r.userId && m.meetingDate === r.meetingDate
+      )
+      if (idx >= 0) merged[idx] = r
+      else merged.push(r)
+    }
+    return merged
+  })
+
+  // QR / attendance session state (advisor)
+  const [sessions, setSessions] = useState<AttendanceSession[]>(() => getSessionsByClub(id))
+  const [showQrForm, setShowQrForm] = useState(false)
+  const [qrDate, setQrDate] = useState(() => new Date().toISOString().split('T')[0])
+  const [qrExpiry, setQrExpiry] = useState(30) // minutes
+  const [qrDistance, setQrDistance] = useState(0) // meters, 0 = disabled
+  const [qrCaptureLocation, setQrCaptureLocation] = useState(false)
+  const [activeSession, setActiveSession] = useState<AttendanceSession | null>(null)
+  const [copied, setCopied] = useState(false)
+
+  // Manual attendance editing (advisor)
+  const [manualDate, setManualDate] = useState(() => new Date().toISOString().split('T')[0])
+  const [showManual, setShowManual] = useState(false)
+
   const club = clubs.find((c) => c.id === id)
   if (!club) notFound()
 
   const advisor = getUserById(club.advisorId)
   const members = club.memberIds.map((mid) => getUserById(mid)).filter(Boolean)
-  const attendanceRecords = getAttendanceByClub(club.id)
 
   const isMember = club.memberIds.includes(currentUser.id)
   const isAdvisor = currentUser.role === 'advisor' && club.advisorId === currentUser.id
@@ -337,6 +368,67 @@ export default function ClubDetailPage({ params }: PageProps) {
       ),
     } : c))
     closePoll(pollId)
+  }
+
+  // --- QR / attendance session handlers ---
+
+  async function generateQr() {
+    let lat: number | undefined
+    let lng: number | undefined
+    if (qrCaptureLocation) {
+      try {
+        const pos = await new Promise<GeolocationPosition>((res, rej) =>
+          navigator.geolocation.getCurrentPosition(res, rej, { timeout: 8000 })
+        )
+        lat = pos.coords.latitude
+        lng = pos.coords.longitude
+      } catch { /* location unavailable — skip */ }
+    }
+    const session: AttendanceSession = {
+      id: `sess-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      clubId: id,
+      meetingDate: qrDate,
+      createdBy: currentUser.id,
+      expiresAt: new Date(Date.now() + qrExpiry * 60_000).toISOString(),
+      maxDistanceMeters: qrDistance,
+      advisorLat: lat,
+      advisorLng: lng,
+      recordedUserIds: [],
+    }
+    saveSession(session)
+    setSessions((prev) => [...prev, session])
+    setActiveSession(session)
+    setShowQrForm(false)
+  }
+
+  function getAttendUrl(session: AttendanceSession): string {
+    if (typeof window === 'undefined') return ''
+    return `${window.location.origin}/attend?t=${session.id}`
+  }
+
+  function copyLink(session: AttendanceSession) {
+    navigator.clipboard.writeText(getAttendUrl(session))
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  // --- Manual attendance handlers ---
+
+  function setManualAttendance(userId: string, present: boolean) {
+    upsertRecord(id, userId, manualDate, present)
+    setAttendanceRecords((prev) => {
+      const next = [...prev]
+      const idx = next.findIndex(
+        (r) => r.clubId === id && r.userId === userId && r.meetingDate === manualDate
+      )
+      const rec: AttendanceRecord = {
+        id: idx >= 0 ? next[idx].id : `att-manual-${Date.now()}`,
+        clubId: id, userId, meetingDate: manualDate, present,
+      }
+      if (idx >= 0) next[idx] = rec
+      else next.push(rec)
+      return next
+    })
   }
 
   // ======================== RENDER ========================
@@ -914,11 +1006,142 @@ export default function ClubDetailPage({ params }: PageProps) {
           {isAdvisor && (
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4" />Attendance
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4" />Attendance
+                  </CardTitle>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => { setShowManual((v) => !v); setShowQrForm(false); setActiveSession(null) }}
+                      className="text-xs text-gray-500 hover:text-gray-900 border rounded px-2 py-1"
+                    >
+                      Manual
+                    </button>
+                    <button
+                      onClick={() => { setShowQrForm((v) => !v); setShowManual(false); setActiveSession(null) }}
+                      className="text-xs text-blue-600 border border-blue-200 hover:bg-blue-50 rounded px-2 py-1 flex items-center gap-1"
+                    >
+                      <QrCode className="w-3 h-3" />QR Code
+                    </button>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
+
+                {/* QR form */}
+                {showQrForm && (
+                  <div className="mb-4 p-3 bg-gray-50 border rounded-lg space-y-3">
+                    <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Generate Check-in QR</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-xs text-gray-500 block mb-0.5">Meeting date</label>
+                        <Input type="date" value={qrDate} onChange={(e) => setQrDate(e.target.value)} className="h-8 text-xs" />
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-500 block mb-0.5">Expires after</label>
+                        <select value={qrExpiry} onChange={(e) => setQrExpiry(Number(e.target.value))}
+                          className="w-full border rounded px-2 py-1.5 text-xs">
+                          <option value={15}>15 minutes</option>
+                          <option value={30}>30 minutes</option>
+                          <option value={60}>1 hour</option>
+                          <option value={120}>2 hours</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-0.5">Max distance (metres, 0 = disabled)</label>
+                      <Input type="number" min={0} value={qrDistance} onChange={(e) => setQrDistance(Number(e.target.value))} className="h-8 text-xs" />
+                    </div>
+                    <label className="flex items-center gap-2 text-xs text-gray-600">
+                      <input type="checkbox" checked={qrCaptureLocation} onChange={(e) => setQrCaptureLocation(e.target.checked)} />
+                      Capture my location now (required for distance check)
+                    </label>
+                    <Button size="sm" className="h-8 w-full" onClick={generateQr}>Generate</Button>
+                  </div>
+                )}
+
+                {/* Active QR session */}
+                {activeSession && (
+                  <div className="mb-4 p-3 bg-white border rounded-lg space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-medium text-gray-700">{activeSession.meetingDate} check-in</p>
+                      <button onClick={() => setActiveSession(null)} className="text-gray-400 hover:text-gray-600"><XCircle className="w-4 h-4" /></button>
+                    </div>
+                    {/* QR code image via public API */}
+                    <div className="flex justify-center">
+                      <img
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(getAttendUrl(activeSession))}`}
+                        alt="Attendance QR code"
+                        className="rounded border"
+                        width={180}
+                        height={180}
+                      />
+                    </div>
+                    {/* Link */}
+                    <div className="flex items-center gap-2">
+                      <input
+                        readOnly
+                        value={getAttendUrl(activeSession)}
+                        className="flex-1 text-xs border rounded px-2 py-1.5 bg-gray-50 text-gray-600 font-mono truncate"
+                      />
+                      <button
+                        onClick={() => copyLink(activeSession)}
+                        className="shrink-0 text-blue-600 hover:text-blue-800 flex items-center gap-1 text-xs border border-blue-200 rounded px-2 py-1.5"
+                      >
+                        <Copy className="w-3 h-3" />{copied ? 'Copied!' : 'Copy'}
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-400">
+                      Expires {new Date(activeSession.expiresAt).toLocaleTimeString()}
+                      {activeSession.maxDistanceMeters > 0 && ` · Within ${activeSession.maxDistanceMeters}m`}
+                    </p>
+                  </div>
+                )}
+
+                {/* Manual attendance editor */}
+                {showManual && (
+                  <div className="mb-4 p-3 bg-gray-50 border rounded-lg space-y-3">
+                    <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Manual Attendance</p>
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-0.5">Date</label>
+                      <Input type="date" value={manualDate} onChange={(e) => setManualDate(e.target.value)} className="h-8 text-xs" />
+                    </div>
+                    {members.length === 0 ? (
+                      <p className="text-xs text-gray-400">No members yet.</p>
+                    ) : (
+                      <div className="space-y-1">
+                        {members.map((member) => {
+                          if (!member) return null
+                          const rec = attendanceRecords.find(
+                            (r) => r.userId === member.id && r.meetingDate === manualDate
+                          )
+                          const isPresent = rec?.present
+                          return (
+                            <div key={member.id} className="flex items-center justify-between py-1">
+                              <span className="text-sm text-gray-700">{member.name}</span>
+                              <div className="flex gap-1">
+                                <button
+                                  onClick={() => setManualAttendance(member.id, true)}
+                                  className={`text-xs px-2 py-0.5 rounded border transition-colors ${isPresent === true ? 'bg-green-500 text-white border-green-500' : 'text-gray-400 border-gray-200 hover:border-green-400 hover:text-green-600'}`}
+                                >
+                                  Present
+                                </button>
+                                <button
+                                  onClick={() => setManualAttendance(member.id, false)}
+                                  className={`text-xs px-2 py-0.5 rounded border transition-colors ${isPresent === false ? 'bg-red-400 text-white border-red-400' : 'text-gray-400 border-gray-200 hover:border-red-300 hover:text-red-500'}`}
+                                >
+                                  Absent
+                                </button>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Member attendance summaries */}
                 {memberAttendance.length === 0 ? (
                   <p className="text-sm text-gray-400">No members yet.</p>
                 ) : (
