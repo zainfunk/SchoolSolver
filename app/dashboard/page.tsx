@@ -2,17 +2,20 @@
 
 import Link from 'next/link'
 import { useMockAuth } from '@/lib/mock-auth'
-import { CLUBS, getUserById, getClubsByAdvisor } from '@/lib/mock-data'
+import { CLUBS, JOIN_REQUESTS, getUserById, getClubsByAdvisor } from '@/lib/mock-data'
 import ClubCard from '@/components/clubs/ClubCard'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { Users, BookOpen } from 'lucide-react'
+import { Users, BookOpen, Clock } from 'lucide-react'
 
 export default function DashboardPage() {
   const { currentUser } = useMockAuth()
 
   if (currentUser.role === 'student') {
     const myClubs = CLUBS.filter((c) => c.memberIds.includes(currentUser.id))
+    const pendingRequests = JOIN_REQUESTS.filter(
+      (r) => r.userId === currentUser.id && r.status === 'pending'
+    )
 
     return (
       <div>
@@ -20,6 +23,35 @@ export default function DashboardPage() {
           <h1 className="text-2xl font-bold text-gray-900">My Clubs</h1>
           <p className="text-sm text-gray-500 mt-1">Welcome back, {currentUser.name}</p>
         </div>
+
+        {/* Pending requests banner */}
+        {pendingRequests.length > 0 && (
+          <div className="mb-5 bg-blue-50 border border-blue-200 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Clock className="w-4 h-4 text-blue-500" />
+              <p className="text-sm font-medium text-blue-800">
+                {pendingRequests.length} pending request{pendingRequests.length > 1 ? 's' : ''}
+              </p>
+            </div>
+            <div className="space-y-1">
+              {pendingRequests.map((req) => {
+                const club = CLUBS.find((c) => c.id === req.clubId)
+                return (
+                  <div key={req.id} className="flex items-center gap-2">
+                    <span className="text-sm text-gray-500">{club?.iconUrl ?? '📌'}</span>
+                    <Link
+                      href={`/clubs/${req.clubId}`}
+                      className="text-sm text-blue-700 hover:underline"
+                    >
+                      {club?.name ?? req.clubId}
+                    </Link>
+                    <span className="text-xs text-gray-400">— awaiting advisor review</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {myClubs.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-xl border">

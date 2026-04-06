@@ -1,5 +1,15 @@
 export type Role = 'admin' | 'advisor' | 'student'
 
+export type JoinRequestStatus = 'pending' | 'approved' | 'rejected'
+
+export interface JoinRequest {
+  id: string
+  clubId: string
+  userId: string
+  requestedAt: string // ISO timestamp — used for FCFS sorting
+  status: JoinRequestStatus
+}
+
 export interface User {
   id: string
   name: string
@@ -31,7 +41,7 @@ export interface Club {
   name: string
   description: string
   iconUrl?: string
-  capacity: number
+  capacity: number | null // null = unlimited
   advisorId: string
   memberIds: string[]
   leadershipPositions: LeadershipPosition[]
@@ -39,6 +49,7 @@ export interface Club {
   meetingTimes: MeetingTime[]
   tags?: string[]
   createdAt: string
+  autoAccept: boolean // auto-approve requests until capacity; after limit requires manual approval
 }
 
 export interface Membership {
@@ -64,4 +75,31 @@ export interface AttendanceRecord {
   userId: string
   meetingDate: string
   present: boolean
+}
+
+// --- Polls & Elections ---
+
+export interface PollCandidate {
+  userId: string
+  votes: string[] // userIds who voted for this candidate
+}
+
+/** Club-level poll pushed by an advisor — only club members can vote */
+export interface Poll {
+  id: string
+  clubId: string
+  positionTitle: string
+  candidates: PollCandidate[]
+  createdAt: string
+  isOpen: boolean
+}
+
+/** School-wide election pushed by an admin — all users can vote */
+export interface SchoolElection {
+  id: string
+  positionTitle: string
+  description: string
+  candidates: PollCandidate[]
+  createdAt: string
+  isOpen: boolean
 }

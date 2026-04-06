@@ -1,4 +1,4 @@
-import { Club, User, Membership, ClubEvent } from '@/types'
+import { Club, User, Membership, ClubEvent, JoinRequest, AttendanceRecord, Poll, SchoolElection } from '@/types'
 
 export const USERS: User[] = [
   {
@@ -64,6 +64,7 @@ export const CLUBS: Club[] = [
     ],
     tags: ['STEM', 'Engineering', 'Competition'],
     createdAt: '2024-09-01',
+    autoAccept: true,
   },
   {
     id: 'club-drama',
@@ -87,6 +88,7 @@ export const CLUBS: Club[] = [
     ],
     tags: ['Arts', 'Performance', 'Theatre'],
     createdAt: '2024-09-01',
+    autoAccept: false,
   },
   {
     id: 'club-chess',
@@ -94,7 +96,7 @@ export const CLUBS: Club[] = [
     description:
       'Sharpen your strategy and compete against other schools. Beginners welcome — experienced members will help you learn.',
     iconUrl: '♟️',
-    capacity: 15,
+    capacity: null, // unlimited
     advisorId: 'user-advisor-1',
     memberIds: ['user-student-1', 'user-student-3'],
     leadershipPositions: [
@@ -107,6 +109,7 @@ export const CLUBS: Club[] = [
     ],
     tags: ['Strategy', 'Competition', 'Games'],
     createdAt: '2024-09-01',
+    autoAccept: false,
   },
   {
     id: 'club-environment',
@@ -130,6 +133,7 @@ export const CLUBS: Club[] = [
     ],
     tags: ['Environment', 'Community', 'Activism'],
     createdAt: '2024-09-01',
+    autoAccept: true,
   },
 ]
 
@@ -157,7 +161,7 @@ export const EVENTS: ClubEvent[] = [
     id: 'event-2',
     clubId: 'club-drama',
     title: 'Spring Musical — Auditions',
-    description: 'Auditions for this year\'s spring musical. Open to all students.',
+    description: "Auditions for this year's spring musical. Open to all students.",
     date: '2026-04-15',
     location: 'Main Auditorium',
     isPublic: true,
@@ -166,7 +170,7 @@ export const EVENTS: ClubEvent[] = [
     id: 'event-3',
     clubId: 'club-chess',
     title: 'Interschool Chess Tournament',
-    description: 'Home tournament — we\'re hosting 6 schools this year.',
+    description: "Home tournament — we're hosting 6 schools this year.",
     date: '2026-05-03',
     location: 'Library',
     isPublic: true,
@@ -181,6 +185,111 @@ export const EVENTS: ClubEvent[] = [
     isPublic: true,
   },
 ]
+
+// Pending join requests sorted by requestedAt (FCFS)
+export const JOIN_REQUESTS: JoinRequest[] = [
+  {
+    id: 'req-1',
+    clubId: 'club-robotics',
+    userId: 'user-student-3',
+    requestedAt: '2026-04-01T09:15:00Z',
+    status: 'pending',
+  },
+  {
+    id: 'req-2',
+    clubId: 'club-drama',
+    userId: 'user-student-1',
+    requestedAt: '2026-04-02T10:30:00Z',
+    status: 'pending',
+  },
+  {
+    id: 'req-3',
+    clubId: 'club-chess',
+    userId: 'user-student-2',
+    requestedAt: '2026-04-01T14:00:00Z',
+    status: 'pending',
+  },
+  {
+    id: 'req-4',
+    clubId: 'club-environment',
+    userId: 'user-student-1',
+    requestedAt: '2026-04-03T08:00:00Z',
+    status: 'pending',
+  },
+  {
+    id: 'req-5',
+    clubId: 'club-environment',
+    userId: 'user-student-3',
+    requestedAt: '2026-04-03T11:45:00Z',
+    status: 'pending',
+  },
+]
+
+export const ATTENDANCE_RECORDS: AttendanceRecord[] = [
+  // Robotics
+  { id: 'att-1', clubId: 'club-robotics', userId: 'user-student-1', meetingDate: '2026-03-19', present: true },
+  { id: 'att-2', clubId: 'club-robotics', userId: 'user-student-2', meetingDate: '2026-03-19', present: false },
+  { id: 'att-3', clubId: 'club-robotics', userId: 'user-student-1', meetingDate: '2026-03-24', present: true },
+  { id: 'att-4', clubId: 'club-robotics', userId: 'user-student-2', meetingDate: '2026-03-24', present: true },
+  { id: 'att-5', clubId: 'club-robotics', userId: 'user-student-1', meetingDate: '2026-03-26', present: true },
+  { id: 'att-6', clubId: 'club-robotics', userId: 'user-student-2', meetingDate: '2026-03-26', present: true },
+  // Drama
+  { id: 'att-7', clubId: 'club-drama', userId: 'user-student-2', meetingDate: '2026-03-16', present: true },
+  { id: 'att-8', clubId: 'club-drama', userId: 'user-student-3', meetingDate: '2026-03-16', present: true },
+  { id: 'att-9', clubId: 'club-drama', userId: 'user-student-2', meetingDate: '2026-03-18', present: false },
+  { id: 'att-10', clubId: 'club-drama', userId: 'user-student-3', meetingDate: '2026-03-18', present: true },
+  // Chess
+  { id: 'att-11', clubId: 'club-chess', userId: 'user-student-1', meetingDate: '2026-03-18', present: true },
+  { id: 'att-12', clubId: 'club-chess', userId: 'user-student-3', meetingDate: '2026-03-18', present: false },
+  { id: 'att-13', clubId: 'club-chess', userId: 'user-student-1', meetingDate: '2026-03-25', present: true },
+  { id: 'att-14', clubId: 'club-chess', userId: 'user-student-3', meetingDate: '2026-03-25', present: true },
+  // Environment
+  { id: 'att-15', clubId: 'club-environment', userId: 'user-student-2', meetingDate: '2026-03-20', present: true },
+  { id: 'att-16', clubId: 'club-environment', userId: 'user-student-2', meetingDate: '2026-03-27', present: false },
+]
+
+/** Club-level election polls */
+export const POLLS: Poll[] = [
+  {
+    id: 'poll-1',
+    clubId: 'club-robotics',
+    positionTitle: 'Build Lead',
+    candidates: [
+      { userId: 'user-student-1', votes: [] },
+      { userId: 'user-student-2', votes: [] },
+    ],
+    createdAt: '2026-04-04T10:00:00Z',
+    isOpen: true,
+  },
+]
+
+/** School-wide elections pushed by admin */
+export const SCHOOL_ELECTIONS: SchoolElection[] = [
+  {
+    id: 'selec-1',
+    positionTitle: 'Student Body President',
+    description: 'Vote for next year\'s Student Body President.',
+    candidates: [
+      { userId: 'user-student-1', votes: ['user-student-2'] },
+      { userId: 'user-student-3', votes: [] },
+    ],
+    createdAt: '2026-04-01T09:00:00Z',
+    isOpen: true,
+  },
+  {
+    id: 'selec-2',
+    positionTitle: 'Student Body Treasurer',
+    description: 'Vote for next year\'s Student Body Treasurer.',
+    candidates: [
+      { userId: 'user-student-2', votes: [] },
+      { userId: 'user-student-3', votes: [] },
+    ],
+    createdAt: '2026-04-01T09:05:00Z',
+    isOpen: true,
+  },
+]
+
+// --- Helper functions ---
 
 export function getUserById(id: string): User | undefined {
   return USERS.find((u) => u.id === id)
@@ -200,4 +309,16 @@ export function getClubsByAdvisor(userId: string): Club[] {
 
 export function getEventsByClub(clubId: string): ClubEvent[] {
   return EVENTS.filter((e) => e.clubId === clubId)
+}
+
+export function getAttendanceByClub(clubId: string): AttendanceRecord[] {
+  return ATTENDANCE_RECORDS.filter((r) => r.clubId === clubId)
+}
+
+export function getRequestsByClub(clubId: string): JoinRequest[] {
+  return JOIN_REQUESTS.filter((r) => r.clubId === clubId)
+}
+
+export function getPollsByClub(clubId: string): Poll[] {
+  return POLLS.filter((p) => p.clubId === clubId)
 }

@@ -15,6 +15,7 @@ export default function ClubForm({ advisors, onSubmit }: ClubFormProps) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [iconUrl, setIconUrl] = useState('')
+  const [unlimited, setUnlimited] = useState(false)
   const [capacity, setCapacity] = useState(20)
   const [advisorId, setAdvisorId] = useState(advisors[0]?.id ?? '')
   const [tags, setTags] = useState('')
@@ -26,13 +27,15 @@ export default function ClubForm({ advisors, onSubmit }: ClubFormProps) {
       name: name.trim(),
       description: description.trim(),
       iconUrl: iconUrl.trim() || undefined,
-      capacity,
+      capacity: unlimited ? null : capacity,
       advisorId,
       tags: tags ? tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
+      autoAccept: false,
     })
     setName('')
     setDescription('')
     setIconUrl('')
+    setUnlimited(false)
     setCapacity(20)
     setTags('')
   }
@@ -91,15 +94,25 @@ export default function ClubForm({ advisors, onSubmit }: ClubFormProps) {
               </select>
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-700 block mb-1">Capacity *</label>
-              <Input
-                type="number"
-                min={1}
-                max={100}
-                value={capacity}
-                onChange={(e) => setCapacity(Number(e.target.value))}
-                required
-              />
+              <label className="text-xs font-medium text-gray-700 block mb-1">Member Limit *</label>
+              <label className="flex items-center gap-2 text-xs text-gray-600 mb-1">
+                <input
+                  type="checkbox"
+                  checked={unlimited}
+                  onChange={(e) => setUnlimited(e.target.checked)}
+                />
+                Unlimited
+              </label>
+              {!unlimited && (
+                <Input
+                  type="number"
+                  min={1}
+                  max={500}
+                  value={capacity}
+                  onChange={(e) => setCapacity(Number(e.target.value))}
+                  required
+                />
+              )}
             </div>
           </div>
           <div>
