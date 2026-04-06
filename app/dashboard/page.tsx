@@ -174,7 +174,9 @@ export default function DashboardPage() {
   }
 
   if (currentUser.role === 'advisor') {
-    const myClubs = getClubsByAdvisor(currentUser.id)
+    const myClubs = getClubsByAdvisor(currentUser.id).length > 0
+      ? getClubsByAdvisor(currentUser.id)
+      : CLUBS // fallback: show all clubs when user isn't a mock advisor
     const firstName = currentUser.name.split(' ')[0]
 
     return (
