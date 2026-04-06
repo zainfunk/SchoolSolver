@@ -30,12 +30,22 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   }, [])
 
   async function sendMessage(clubId: string, senderId: string, content: string) {
-    await supabase.from('chat_messages').insert({
+    const msg: ChatMessage = {
       id: `msg-${Date.now()}`,
-      club_id: clubId,
-      sender_id: senderId,
+      clubId,
+      senderId,
       content: content.trim(),
-      sent_at: new Date().toISOString(),
+      sentAt: new Date().toISOString(),
+    }
+    // Optimistically add to local state immediately
+    setMessages((prev) => [...prev, msg])
+    // Persist to Supabase in background
+    supabase.from('chat_messages').insert({
+      id: msg.id,
+      club_id: msg.clubId,
+      sender_id: msg.senderId,
+      content: msg.content,
+      sent_at: msg.sentAt,
     })
   }
 
