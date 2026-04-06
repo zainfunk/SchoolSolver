@@ -29,12 +29,10 @@ export default function Navbar() {
           <Link href="/clubs" className="hover:text-gray-900 transition-colors">
             Clubs
           </Link>
-          {currentUser.role === 'student' && (
-            <Link href="/dashboard" className="hover:text-gray-900 transition-colors">
-              My Clubs
-            </Link>
-          )}
-          {currentUser.role === 'advisor' && (
+          <Link href="/elections" className="hover:text-gray-900 transition-colors">
+            Elections
+          </Link>
+          {(currentUser.role === 'student' || currentUser.role === 'advisor') && (
             <Link href="/dashboard" className="hover:text-gray-900 transition-colors">
               My Clubs
             </Link>

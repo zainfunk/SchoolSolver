@@ -11,8 +11,8 @@ interface ClubCardProps {
 }
 
 export default function ClubCard({ club, advisor, isMember }: ClubCardProps) {
-  const spotsLeft = club.capacity - club.memberIds.length
-  const isFull = spotsLeft <= 0
+  const spotsLeft = club.capacity !== null ? club.capacity - club.memberIds.length : null
+  const isFull = club.capacity !== null && club.memberIds.length >= club.capacity
 
   return (
     <Link href={`/clubs/${club.id}`}>
@@ -41,11 +41,13 @@ export default function ClubCard({ club, advisor, isMember }: ClubCardProps) {
             <div className="flex items-center gap-1.5 text-xs text-gray-500">
               <Users className="w-3.5 h-3.5" />
               <span>
-                {club.memberIds.length}/{club.capacity}
+                {club.memberIds.length}/{club.capacity === null ? '∞' : club.capacity}
               </span>
             </div>
             {isFull ? (
               <span className="text-xs text-red-500 font-medium">Full</span>
+            ) : spotsLeft === null ? (
+              <span className="text-xs text-gray-400 font-medium">Unlimited</span>
             ) : (
               <span className="text-xs text-green-600 font-medium">{spotsLeft} spots left</span>
             )}
