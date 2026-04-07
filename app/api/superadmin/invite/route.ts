@@ -13,24 +13,29 @@ async function requireSuperAdmin() {
 }
 
 export async function POST(request: NextRequest) {
-  const userId = await requireSuperAdmin()
-  if (!userId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  try {
+    const userId = await requireSuperAdmin()
+    if (!userId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const { email } = await request.json()
-  if (!email) return NextResponse.json({ error: 'Email required' }, { status: 400 })
+    const { email } = await request.json()
+    if (!email) return NextResponse.json({ error: 'Email required' }, { status: 400 })
 
-  const db = createServiceClient()
-  const token = generateSetupToken()
+    const db = createServiceClient()
+    const token = generateSetupToken()
 
-  const { error } = await db.from('school_invites').insert({
-    email: email.trim().toLowerCase(),
-    token,
-  })
+    const { error } = await db.from('school_invites').insert({
+      email: email.trim().toLowerCase(),
+      token,
+    })
 
-  if (error) {
-    console.error('invite error', error)
-    return NextResponse.json({ error: 'Failed to create invite' }, { status: 500 })
+    if (error) {
+      console.error('invite error', error)
+      return NextResponse.json({ error: 'Failed to create invite' }, { status: 500 })
+    }
+
+    return NextResponse.json({ token, inviteUrl: `/invite/${token}` })
+  } catch (err) {
+    console.error('superadmin invite unexpected error', err)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
-
-  return NextResponse.json({ token, inviteUrl: `/invite/${token}` })
 }
