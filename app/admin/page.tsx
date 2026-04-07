@@ -19,25 +19,23 @@ import { Users, Shield, Vote, Plus, XCircle, GraduationCap } from 'lucide-react'
 
 export default function AdminPage() {
   const { currentUser } = useMockAuth()
-  const [clubs, setClubs] = useState<Club[]>(INITIAL_CLUBS)
-  const [elections, setElections] = useState<SchoolElection[]>(INITIAL_ELECTIONS)
+  const [clubs, setClubs] = useState<Club[]>([])
+  const [elections, setElections] = useState<SchoolElection[]>([])
   const [allUsers, setAllUsers] = useState<User[]>(USERS)
 
   useEffect(() => {
-    // Merge Supabase users (real Clerk accounts) with mock users
-    supabase.from('users').select('id, name, email, role').then(({ data }) => {
+    if (!currentUser.schoolId) return
+    // Load users for this school only
+    supabase.from('users').select('id, name, email, role').eq('school_id', currentUser.schoolId).then(({ data }) => {
       if (!data?.length) return
-      setAllUsers((prev) => {
-        const map = new Map(prev.map((u) => [u.id, u]))
-        for (const u of data) map.set(u.id, { id: u.id, name: u.name, email: u.email, role: u.role as Role })
-        return Array.from(map.values())
-      })
+      setAllUsers(data.map((u) => ({ id: u.id, name: u.name, email: u.email, role: u.role as Role })))
     })
-  }, [])
+  }, [currentUser.schoolId])
 
   useEffect(() => {
-    // Load elections from Supabase
-    supabase.from('school_elections').select('*, election_candidates(*), election_votes(*)').then(({ data }) => {
+    if (!currentUser.schoolId) return
+    // Load this school's elections
+    supabase.from('school_elections').select('*, election_candidates(*), election_votes(*)').eq('school_id', currentUser.schoolId).then(({ data }) => {
       if (data) setElections(data.map((e) => ({
         id: e.id, positionTitle: e.position_title, description: e.description ?? '',
         createdAt: e.created_at, isOpen: e.is_open,
@@ -49,8 +47,8 @@ export default function AdminPage() {
         })),
       })))
     })
-    // Load clubs from Supabase
-    supabase.from('clubs').select('*').then(({ data }) => {
+    // Load this school's clubs
+    supabase.from('clubs').select('*').eq('school_id', currentUser.schoolId).then(({ data }) => {
       if (data) setClubs((prev) => {
         const supaIds = new Set(data.map((c) => c.id))
         const filtered = prev.filter((c) => supaIds.has(c.id))
@@ -94,6 +92,7 @@ export default function AdminPage() {
       icon_url: newClub.iconUrl, capacity: newClub.capacity,
       advisor_id: newClub.advisorId || null, auto_accept: false,
       tags: newClub.tags ?? [], event_creator_ids: [], created_at: newClub.createdAt,
+      school_id: currentUser.schoolId,
     })
     setClubs((prev) => [...prev, newClub])
   }
@@ -115,7 +114,7 @@ export default function AdminPage() {
       createdAt: new Date().toISOString(),
       isOpen: true,
     }
-    await supabase.from('school_elections').insert({ id: elecId, position_title: newElection.positionTitle, description: newElection.description, created_at: newElection.createdAt, is_open: true })
+    await supabase.from('school_elections').insert({ id: elecId, position_title: newElection.positionTitle, description: newElection.description, created_at: newElection.createdAt, is_open: true, school_id: currentUser.schoolId })
     await supabase.from('election_candidates').insert(electionCandidateIds.map((uid) => ({ election_id: elecId, user_id: uid })))
     setElections((prev) => [...prev, newElection])
     setElectionTitle('')

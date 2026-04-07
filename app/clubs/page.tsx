@@ -1,13 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useMockAuth } from '@/lib/mock-auth'
-import { CLUBS, USERS, MEMBERSHIPS } from '@/lib/mock-data'
+import { supabase } from '@/lib/supabase'
+import { Club } from '@/types'
 import Avatar from '@/components/Avatar'
 import { Search, ArrowRight } from 'lucide-react'
 
-// Background patterns cycled per card
 const PATTERNS = [
   'radial-gradient(circle at 2px 2px, currentColor 1px, transparent 0)',
   'repeating-linear-gradient(45deg, currentColor 0, currentColor 1px, transparent 0, transparent 50%)',
@@ -16,7 +16,6 @@ const PATTERNS = [
 ]
 const PATTERN_SIZES = ['16px 16px', '10px 10px', '8px 8px', '100% 20px']
 
-// Theme colors per club based on first tag
 function clubTheme(tags: string[] = []): { icon: string; iconText: string; dot: string; panelColor: string } {
   const t = tags[0]?.toLowerCase() ?? ''
   if (t === 'stem' || t === 'engineering')
@@ -40,19 +39,60 @@ function capacityDot(memberCount: number, capacity: number | null): string {
 
 export default function ClubsPage() {
   const { currentUser } = useMockAuth()
+  const [clubs, setClubs] = useState<Club[]>([])
+  const [myMembershipClubIds, setMyMembershipClubIds] = useState<string[]>([])
+  const [advisorNames, setAdvisorNames] = useState<Record<string, string>>({})
   const [search, setSearch] = useState('')
   const [activeTag, setActiveTag] = useState<string | null>(null)
 
-  const myMembershipClubIds = MEMBERSHIPS
-    .filter((m) => m.userId === currentUser.id)
-    .map((m) => m.clubId)
+  useEffect(() => {
+    if (!currentUser.schoolId) return
 
-  // Collect unique tags
-  const allTags = Array.from(
-    new Set(CLUBS.flatMap((c) => c.tags ?? []))
-  )
+    // Load this school's clubs
+    supabase.from('clubs').select('*').eq('school_id', currentUser.schoolId).then(({ data }) => {
+      if (!data) return
+      const mapped: Club[] = data.map((d) => ({
+        id: d.id, name: d.name, description: d.description ?? '',
+        iconUrl: d.icon_url ?? undefined, advisorId: d.advisor_id ?? '',
+        memberIds: [], leadershipPositions: [], socialLinks: [], meetingTimes: [],
+        tags: d.tags ?? [], eventCreatorIds: d.event_creator_ids ?? [],
+        capacity: d.capacity ?? null, autoAccept: d.auto_accept ?? false,
+        createdAt: d.created_at ?? '',
+      }))
+      setClubs(mapped)
 
-  const filtered = CLUBS.filter((club) => {
+      // Load member counts
+      const clubIds = mapped.map((c) => c.id)
+      supabase.from('memberships').select('club_id, user_id').in('club_id', clubIds).then(({ data: mData }) => {
+        if (!mData) return
+        setClubs((prev) => prev.map((c) => ({
+          ...c,
+          memberIds: mData.filter((m) => m.club_id === c.id).map((m) => m.user_id),
+        })))
+      })
+
+      // Load advisor names
+      const advisorIds = [...new Set(mapped.map((c) => c.advisorId).filter(Boolean))]
+      if (advisorIds.length > 0) {
+        supabase.from('users').select('id, name').in('id', advisorIds).then(({ data: uData }) => {
+          if (uData) {
+            const map: Record<string, string> = {}
+            for (const u of uData) map[u.id] = u.name
+            setAdvisorNames(map)
+          }
+        })
+      }
+    })
+
+    // Load current user's memberships
+    supabase.from('memberships').select('club_id').eq('user_id', currentUser.id).then(({ data }) => {
+      setMyMembershipClubIds((data ?? []).map((r) => r.club_id))
+    })
+  }, [currentUser.schoolId, currentUser.id])
+
+  const allTags = Array.from(new Set(clubs.flatMap((c) => c.tags ?? [])))
+
+  const filtered = clubs.filter((club) => {
     const q = search.toLowerCase()
     const matchesSearch =
       club.name.toLowerCase().includes(q) ||
@@ -64,7 +104,6 @@ export default function ClubsPage() {
 
   return (
     <div className="max-w-7xl mx-auto">
-      {/* Editorial Header */}
       <header className="mb-12">
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 mb-8">
           <div>
@@ -90,14 +129,11 @@ export default function ClubsPage() {
           </div>
         </div>
 
-        {/* Filter pills */}
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setActiveTag(null)}
             className={`px-5 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-widest transition-colors ${
-              activeTag === null
-                ? 'bg-[#0058be] text-white shadow-lg shadow-blue-500/20'
-                : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+              activeTag === null ? 'bg-[#0058be] text-white shadow-lg shadow-blue-500/20' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
             }`}
           >
             All Clubs
@@ -107,9 +143,7 @@ export default function ClubsPage() {
               key={tag}
               onClick={() => setActiveTag(activeTag === tag ? null : tag)}
               className={`px-5 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-widest transition-colors ${
-                activeTag === tag
-                  ? 'bg-[#0058be] text-white shadow-lg shadow-blue-500/20'
-                  : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                activeTag === tag ? 'bg-[#0058be] text-white shadow-lg shadow-blue-500/20' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
               }`}
             >
               {tag}
@@ -118,18 +152,14 @@ export default function ClubsPage() {
         </div>
       </header>
 
-      {/* Club grid */}
       {filtered.length === 0 ? (
         <div className="text-center py-20 text-gray-400">
-          <p className="text-sm">No clubs match your search.</p>
+          <p className="text-sm">{clubs.length === 0 ? 'No clubs have been created yet.' : 'No clubs match your search.'}</p>
         </div>
       ) : (
-        <div
-          className="grid gap-6"
-          style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}
-        >
+        <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
           {filtered.map((club, i) => {
-            const advisor = USERS.find((u) => u.id === club.advisorId)
+            const advisorName = advisorNames[club.advisorId]
             const isMember = myMembershipClubIds.includes(club.id)
             const isFull = club.capacity !== null && club.memberIds.length >= club.capacity
             const theme = clubTheme(club.tags)
@@ -140,7 +170,6 @@ export default function ClubsPage() {
             return (
               <Link key={club.id} href={`/clubs/${club.id}`}>
                 <div className="group relative bg-white rounded-xl p-7 overflow-hidden shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-gray-100 flex flex-col justify-between min-h-[260px] hover:shadow-[0_12px_32px_rgba(0,0,0,0.09)] transition-all cursor-pointer">
-                  {/* Background pattern decoration */}
                   <div
                     className="absolute top-0 right-0 w-1/3 h-full opacity-20 group-hover:opacity-30 transition-opacity pointer-events-none"
                     style={{
@@ -151,19 +180,12 @@ export default function ClubsPage() {
                       color: 'currentColor',
                     }}
                   />
-
                   <div>
-                    {/* Icon */}
                     <div className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl mb-5 ${theme.icon}`}>
                       {club.iconUrl ?? '📌'}
                     </div>
-
-                    {/* Name + joined badge */}
                     <div className="flex items-start gap-2 mb-2">
-                      <h3
-                        className="font-bold text-xl text-gray-900 leading-tight flex-1"
-                        style={{ fontFamily: 'var(--font-manrope)' }}
-                      >
+                      <h3 className="font-bold text-xl text-gray-900 leading-tight flex-1" style={{ fontFamily: 'var(--font-manrope)' }}>
                         {club.name}
                       </h3>
                       {isMember && (
@@ -172,25 +194,15 @@ export default function ClubsPage() {
                         </span>
                       )}
                     </div>
-
-                    <p className="text-gray-500 text-sm leading-relaxed line-clamp-2 mb-5">
-                      {club.description}
-                    </p>
+                    <p className="text-gray-500 text-sm leading-relaxed line-clamp-2 mb-5">{club.description}</p>
                   </div>
-
-                  {/* Footer */}
                   <div className="space-y-3 pt-5 border-t border-gray-100">
-                    {/* Advisor */}
-                    {advisor && (
+                    {advisorName && (
                       <div className="flex items-center gap-2.5">
-                        <Avatar name={advisor.name} size="sm" />
-                        <span className="text-xs font-semibold text-gray-500 tracking-tight">
-                          {advisor.name}
-                        </span>
+                        <Avatar name={advisorName} size="sm" />
+                        <span className="text-xs font-semibold text-gray-500 tracking-tight">{advisorName}</span>
                       </div>
                     )}
-
-                    {/* Member count + arrow */}
                     <div className="flex justify-between items-center">
                       <div className="flex items-center gap-2">
                         <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
@@ -209,7 +221,6 @@ export default function ClubsPage() {
         </div>
       )}
 
-      {/* Footer */}
       <footer className="mt-20 pt-10 border-t border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-gray-400">
         <div className="flex gap-6">
           <span className="text-xs font-bold uppercase tracking-widest">Directory Rules</span>
@@ -217,9 +228,7 @@ export default function ClubsPage() {
         </div>
         <div className="flex items-center gap-2">
           <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-          <span className="text-[10px] font-bold uppercase tracking-widest">
-            {CLUBS.length} Active Communities
-          </span>
+          <span className="text-[10px] font-bold uppercase tracking-widest">{clubs.length} Active Communities</span>
         </div>
       </footer>
     </div>

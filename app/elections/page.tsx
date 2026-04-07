@@ -2,10 +2,12 @@
 
 import Link from 'next/link'
 import { useMockAuth } from '@/lib/mock-auth'
-import { SCHOOL_ELECTIONS, CLUB_FORMS, POLLS, getClubById, CLUBS } from '@/lib/mock-data'
+import { CLUB_FORMS, getClubById } from '@/lib/mock-data'
+import { supabase } from '@/lib/supabase'
 import { hasVoted } from '@/lib/election-store'
 import { hasResponded } from '@/lib/forms-store'
 import { useState, useEffect } from 'react'
+import { SchoolElection, Poll } from '@/types'
 import { Vote, FileText, ClipboardList, Clock, ChevronRight, TrendingUp, CheckCircle2, AlertCircle } from 'lucide-react'
 import Avatar from '@/components/Avatar'
 
@@ -50,27 +52,61 @@ type FilterTab = 'all' | 'elections' | 'forms'
 export default function FormsPage() {
   const { currentUser, devRole } = useMockAuth()
   const [filter, setFilter] = useState<FilterTab>('all')
-  // doneIds is populated client-side only to avoid SSR/localStorage hydration mismatch
   const [doneIds, setDoneIds] = useState<Set<string>>(new Set())
+  const [schoolElections, setSchoolElections] = useState<SchoolElection[]>([])
+  const [polls, setPolls] = useState<Poll[]>([])
 
-  // School elections
-  const openElections = SCHOOL_ELECTIONS.filter((e) => e.isOpen)
-  const closedElections = SCHOOL_ELECTIONS.filter((e) => !e.isOpen)
+  useEffect(() => {
+    if (!currentUser.schoolId) return
+    // Load school-wide elections for this school
+    supabase.from('school_elections').select('*, election_candidates(*), election_votes(*)').eq('school_id', currentUser.schoolId).then(({ data }) => {
+      if (data) setSchoolElections(data.map((e) => ({
+        id: e.id, positionTitle: e.position_title, description: e.description ?? '',
+        createdAt: e.created_at, isOpen: e.is_open,
+        candidates: (e.election_candidates as {user_id: string}[]).map((c) => ({
+          userId: c.user_id,
+          votes: (e.election_votes as {candidate_user_id: string; voter_user_id: string}[])
+            .filter((v) => v.candidate_user_id === c.user_id).map((v) => v.voter_user_id),
+        })),
+      })))
+    })
+    // Load club polls for this school's clubs
+    supabase.from('clubs').select('id').eq('school_id', currentUser.schoolId).then(({ data: clubData }) => {
+      const schoolClubIds = (clubData ?? []).map((c) => c.id)
+      if (schoolClubIds.length === 0) return
+      const visibleIds = (devRole === 'advisor' || devRole === 'admin')
+        ? schoolClubIds
+        : schoolClubIds // memberships filter applied below
 
-  // Club polls (only for clubs the user is in; dev-advisor sees all)
-  const myClubIds = (devRole === 'advisor' || devRole === 'admin')
-    ? CLUBS.map((c) => c.id)
-    : CLUBS.filter((c) => c.memberIds.includes(currentUser.id) || c.advisorId === currentUser.id).map((c) => c.id)
-  const openPolls = POLLS.filter((p) => p.isOpen && myClubIds.includes(p.clubId))
+      supabase.from('memberships').select('club_id').eq('user_id', currentUser.id).then(({ data: memData }) => {
+        const myClubIds = (memData ?? []).map((r) => r.club_id)
+        const pollClubIds = (devRole === 'advisor' || devRole === 'admin') ? visibleIds : myClubIds.filter((id) => visibleIds.includes(id))
+        if (pollClubIds.length === 0) return
+        supabase.from('polls').select('*, poll_candidates(*), poll_votes(*)').in('club_id', pollClubIds).then(({ data: pollData }) => {
+          if (pollData) setPolls(pollData.map((p) => ({
+            id: p.id, clubId: p.club_id, positionTitle: p.position_title,
+            createdAt: p.created_at, isOpen: p.is_open,
+            candidates: (p.poll_candidates as {user_id: string}[]).map((c) => ({
+              userId: c.user_id,
+              votes: (p.poll_votes as {candidate_user_id: string; voter_user_id: string}[])
+                .filter((v) => v.candidate_user_id === c.user_id).map((v) => v.voter_user_id),
+            })),
+          })))
+        })
+      })
+    })
+  }, [currentUser.schoolId, currentUser.id, devRole])
 
-  // Club forms
+  const openElections = schoolElections.filter((e) => e.isOpen)
+  const closedElections = schoolElections.filter((e) => !e.isOpen)
+  const openPolls = polls.filter((p) => p.isOpen)
+
+  // Club forms (still from mock for now — will be school-scoped when forms get school_id)
   const openForms = CLUB_FORMS.filter((f) => f.isOpen)
   const closedForms = CLUB_FORMS.filter((f) => !f.isOpen)
 
-  // Most urgent open election (for the hero card)
   const urgentElection = openElections[0] ?? null
 
-  // Read localStorage only after mount
   useEffect(() => {
     const allChecks = [
       ...openElections.map((e) => hasVoted(e.id, currentUser.id).then((v) => v ? e.id : null)),
@@ -80,7 +116,7 @@ export default function FormsPage() {
     Promise.all(allChecks).then((results) => {
       setDoneIds(new Set(results.filter(Boolean) as string[]))
     })
-  }, [currentUser.id])
+  }, [currentUser.id, openElections.length, openPolls.length])
 
   // Merged active list for filtered view
   type ListItem = { id: string; kind: 'election' | 'poll' | 'form'; title: string; subtitle?: string; description?: string; closesAt: string | null; clubId?: string; done: boolean; formType?: string }
