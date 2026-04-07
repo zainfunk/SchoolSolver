@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { EVENTS, CLUBS } from '@/lib/mock-data'
+import { useMockAuth } from '@/lib/mock-auth'
 import { supabase } from '@/lib/supabase'
 import { ClubEvent } from '@/types'
 import { Search, Clock, MapPin } from 'lucide-react'
@@ -18,31 +18,38 @@ const PAST_COLORS = { spine: 'bg-gray-100', spineText: 'text-gray-500', badge: '
 const DEFAULT_COLORS = { spine: 'bg-blue-50', spineText: 'text-blue-800', badge: 'bg-blue-100', badgeText: 'text-blue-700', panel: 'bg-blue-50/60' }
 
 export default function EventsPage() {
+  const { currentUser } = useMockAuth()
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'past'>('upcoming')
-  const [events, setEvents] = useState<ClubEvent[]>(EVENTS)
+  const [events, setEvents] = useState<ClubEvent[]>([])
+  const [clubNames, setClubNames] = useState<Record<string, { name: string; iconUrl?: string }>>({})
 
   useEffect(() => {
-    supabase.from('events').select('*').then(({ data }) => {
-      if (!data?.length) return
-      const supabaseEvents: ClubEvent[] = data.map((e) => ({
-        id: e.id, clubId: e.club_id, title: e.title, description: e.description ?? '',
-        date: e.date, location: e.location ?? undefined, isPublic: e.is_public, createdBy: e.created_by,
-      }))
-      setEvents((prev) => {
-        const map = new Map(prev.map((e) => [e.id, e]))
-        for (const e of supabaseEvents) map.set(e.id, e)
-        return Array.from(map.values())
+    if (!currentUser.schoolId) return
+    // Load this school's clubs, then their events
+    supabase.from('clubs').select('id, name, icon_url').eq('school_id', currentUser.schoolId).then(({ data: clubData }) => {
+      if (!clubData?.length) return
+      const nameMap: Record<string, { name: string; iconUrl?: string }> = {}
+      for (const c of clubData) nameMap[c.id] = { name: c.name, iconUrl: c.icon_url ?? undefined }
+      setClubNames(nameMap)
+
+      const clubIds = clubData.map((c) => c.id)
+      supabase.from('events').select('*').in('club_id', clubIds).then(({ data }) => {
+        if (!data) return
+        setEvents(data.map((e) => ({
+          id: e.id, clubId: e.club_id, title: e.title, description: e.description ?? '',
+          date: e.date, location: e.location ?? undefined, isPublic: e.is_public, createdBy: e.created_by,
+        })))
       })
     })
-  }, [])
+  }, [currentUser.schoolId])
 
   const today = new Date().toISOString().split('T')[0]
 
   const publicEvents = events.filter((e) => e.isPublic)
     .filter((e) => {
       const q = search.toLowerCase()
-      const club = CLUBS.find((c) => c.id === e.clubId)
+      const club = clubNames[e.clubId]
       return (
         e.title.toLowerCase().includes(q) ||
         e.description.toLowerCase().includes(q) ||
@@ -110,7 +117,7 @@ export default function EventsPage() {
       ) : (
         <div className="space-y-8">
           {publicEvents.map((event) => {
-            const club = CLUBS.find((c) => c.id === event.clubId)
+            const club = clubNames[event.clubId]
             const isPast = event.date < today
             const date = new Date(event.date + 'T00:00:00')
             const month = date.toLocaleString('en', { month: 'short' }).toUpperCase()
@@ -142,11 +149,11 @@ export default function EventsPage() {
                     {/* Club badge */}
                     <div className="flex items-center gap-2 mb-4">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm leading-none ${colors.badge}`}>
-                        {club?.iconUrl ?? '📌'}
+                        {club?.iconUrl ?? '📌' as string}
                       </div>
                       {club && (
                         <Link
-                          href={`/clubs/${club.id}`}
+                          href={`/clubs/${event.clubId}`}
                           className={`text-xs font-bold uppercase tracking-wider hover:underline ${colors.badgeText}`}
                         >
                           {club.name}

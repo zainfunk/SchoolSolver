@@ -6,8 +6,7 @@ import { notFound } from 'next/navigation'
 import { useMockAuth } from '@/lib/mock-auth'
 import { supabase } from '@/lib/supabase'
 import {
-  CLUBS, MEMBERSHIPS, JOIN_REQUESTS, POLLS,
-  getUserById, getEventsByClub, getAttendanceByClub, getNewsByClub,
+  getUserById, getAttendanceByClub,
 } from '@/lib/mock-data'
 import {
   getSessionsByClub, saveSession, upsertRecord, getRecordsByClub,
@@ -21,7 +20,7 @@ import {
   ClockIcon, Vote, Plus, Trash2, UserCheck, Pencil, Newspaper, Camera,
   MessageCircle, Tv, Video, Link as LinkIcon, QrCode, Copy, ArrowLeft, Mail,
 } from 'lucide-react'
-import { User, Role, JoinRequest, LeadershipPosition, Poll, ClubEvent, ClubNews, SocialLink, SocialPlatform, MeetingTime, AttendanceRecord, AttendanceSession } from '@/types'
+import { User, Role, Club, Membership, JoinRequest, LeadershipPosition, Poll, ClubEvent, ClubNews, SocialLink, SocialPlatform, MeetingTime, AttendanceRecord, AttendanceSession } from '@/types'
 import Avatar from '@/components/Avatar'
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -51,11 +50,12 @@ export default function ClubDetailPage({ params }: PageProps) {
   const { id } = use(params)
   const { currentUser, devRole } = useMockAuth()
 
-  // Core state — seeded from mock, merged with Supabase on mount
-  const [clubs, setClubs] = useState(CLUBS)
-  const [memberships, setMemberships] = useState(MEMBERSHIPS)
-  const [requests, setRequests] = useState<JoinRequest[]>(JOIN_REQUESTS)
-  const [polls, setPolls] = useState<Poll[]>(POLLS)
+  // Core state — loaded from Supabase on mount
+  const [clubs, setClubs] = useState<Club[]>([])
+  const [memberships, setMemberships] = useState<Membership[]>([])
+  const [requests, setRequests] = useState<JoinRequest[]>([])
+  const [polls, setPolls] = useState<Poll[]>([])
+  const [clubLoading, setClubLoading] = useState(true)
   // Users fetched from Supabase for IDs not in mock data (e.g. real Clerk accounts)
   const [supabaseUsers, setSupabaseUsers] = useState<Record<string, User>>({})
 
@@ -116,21 +116,26 @@ export default function ClubDetailPage({ params }: PageProps) {
       }
     })
   }, [id])
-  const [clubEvents, setClubEvents] = useState<ClubEvent[]>(() => getEventsByClub(id))
-  const [clubNews, setClubNews] = useState<ClubNews[]>(() => getNewsByClub(id))
+  const [clubEvents, setClubEvents] = useState<ClubEvent[]>([])
+  const [clubNews, setClubNews] = useState<ClubNews[]>([])
 
-  // Load club structural data from Supabase on mount (overrides mock defaults)
+  // Load club structural data from Supabase on mount
   useEffect(() => {
     supabase.from('clubs').select('*').eq('id', id).maybeSingle().then(({ data }) => {
-      if (data) setClubs((prev) => prev.map((c) => c.id !== id ? c : {
-        ...c,
-        autoAccept: data.auto_accept ?? c.autoAccept,
-        capacity: data.capacity ?? c.capacity,
-        iconUrl: data.icon_url ?? c.iconUrl,
-        description: data.description ?? c.description,
-        tags: data.tags ?? c.tags,
-        eventCreatorIds: data.event_creator_ids ?? c.eventCreatorIds,
-      }))
+      if (!data) { setClubLoading(false); return }
+      const base: Club = {
+        id: data.id, name: data.name, description: data.description ?? '',
+        iconUrl: data.icon_url ?? undefined, advisorId: data.advisor_id ?? '',
+        memberIds: [], leadershipPositions: [], socialLinks: [], meetingTimes: [],
+        tags: data.tags ?? [], eventCreatorIds: data.event_creator_ids ?? [],
+        capacity: data.capacity ?? null, autoAccept: data.auto_accept ?? false,
+        createdAt: data.created_at ?? '',
+      }
+      setClubs((prev) => {
+        const exists = prev.find((c) => c.id === id)
+        return exists ? prev.map((c) => c.id !== id ? c : { ...c, ...base }) : [...prev, base]
+      })
+      setClubLoading(false)
     })
     supabase.from('leadership_positions').select('*').eq('club_id', id).then(({ data }) => {
       if (data?.length) setClubs((prev) => prev.map((c) => c.id !== id ? c : {
@@ -258,6 +263,7 @@ export default function ClubDetailPage({ params }: PageProps) {
   const [showManual, setShowManual] = useState(false)
 
   const foundClub = clubs.find((c) => c.id === id)
+  if (clubLoading) return null
   if (!foundClub) notFound()
   const club = foundClub!
 

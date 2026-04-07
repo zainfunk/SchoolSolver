@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useMockAuth } from '@/lib/mock-auth'
 import { useChatStore } from '@/lib/chat-store'
-import { CLUBS, USERS } from '@/lib/mock-data'
+import { USERS } from '@/lib/mock-data'
 import { supabase } from '@/lib/supabase'
-import { User, Role } from '@/types'
+import { Club, User, Role } from '@/types'
 import Avatar from '@/components/Avatar'
 import { ArrowLeft, Send, MessageSquare } from 'lucide-react'
 
@@ -37,21 +37,36 @@ export default function ClubChatPage({ params }: { params: Promise<{ clubId: str
   const [accessChecked, setAccessChecked] = useState(false)
   const [clubMemberIds, setClubMemberIds] = useState<string[]>([])
   const [supabaseUsers, setSupabaseUsers] = useState<Record<string, User>>({})
+  const [schoolClubs, setSchoolClubs] = useState<Club[]>([])
+  const [club, setClub] = useState<Club | null>(null)
+  const [clubLoading, setClubLoading] = useState(true)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const club = CLUBS.find((c) => c.id === clubId)
-
+  // Load all clubs in this school + current user memberships
   useEffect(() => {
-    if (!currentUser.id) return
+    if (!currentUser.id || !currentUser.schoolId) return
     supabase.from('memberships').select('club_id').eq('user_id', currentUser.id).then(({ data }) => {
       setMyClubIds((data ?? []).map((r) => r.club_id))
       setAccessChecked(true)
     })
-  }, [currentUser.id])
+    supabase.from('clubs').select('id, name, icon_url, advisor_id').eq('school_id', currentUser.schoolId).then(({ data }) => {
+      if (data) {
+        const mapped: Club[] = data.map((d) => ({
+          id: d.id, name: d.name, iconUrl: d.icon_url ?? undefined, advisorId: d.advisor_id ?? '',
+          description: '', memberIds: [], leadershipPositions: [], socialLinks: [], meetingTimes: [],
+          tags: [], eventCreatorIds: [], capacity: null, autoAccept: false, createdAt: '',
+        }))
+        setSchoolClubs(mapped)
+        const found = mapped.find((c) => c.id === clubId) ?? null
+        setClub(found)
+      }
+      setClubLoading(false)
+    })
+  }, [currentUser.id, currentUser.schoolId, clubId])
 
+  // Load all members of this club from Supabase, then fetch user data for unknowns
   useEffect(() => {
-    // Load all members of this club from Supabase, then fetch user data for unknowns
     supabase.from('memberships').select('user_id').eq('club_id', clubId).then(({ data }) => {
       if (!data?.length) return
       const ids = data.map((r) => r.user_id)
@@ -74,32 +89,34 @@ export default function ClubChatPage({ params }: { params: Promise<{ clubId: str
   const canAccess =
     currentUser.role === 'admin' ||
     devRole === 'advisor' ||
+    devRole === 'admin' ||
     myClubIds.includes(clubId) ||
     club?.memberIds.includes(currentUser.id) ||
     club?.advisorId === currentUser.id
 
   useEffect(() => {
-    if (accessChecked && (!club || !canAccess)) {
+    if (!clubLoading && accessChecked && (!club || !canAccess)) {
       router.replace('/chat')
     }
-  }, [accessChecked, club, canAccess, router])
+  }, [clubLoading, accessChecked, club, canAccess, router])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  if (!accessChecked || !club || !canAccess) return null
+  if (clubLoading || !accessChecked) return null
+  if (!club || !canAccess) return null
 
   function resolveUser(userId: string): User | undefined {
     return USERS.find((u) => u.id === userId) ?? supabaseUsers[userId]
   }
 
-  const accessibleClubs = (currentUser.role === 'admin' || devRole === 'advisor')
-    ? CLUBS
-    : CLUBS.filter((c) => myClubIds.includes(c.id) || c.memberIds.includes(currentUser.id) || c.advisorId === currentUser.id)
+  const accessibleClubs = (currentUser.role === 'admin' || devRole === 'admin' || devRole === 'advisor')
+    ? schoolClubs
+    : schoolClubs.filter((c) => myClubIds.includes(c.id) || c.advisorId === currentUser.id)
+
   const clubMessages = messages.filter((m) => m.clubId === clubId)
   const advisor = resolveUser(club.advisorId)
-  // Merge mock memberIds with Supabase-fetched member IDs for this club
   const allMemberIds = Array.from(new Set([...club.memberIds, ...clubMemberIds]))
   const members = allMemberIds.map((id) => resolveUser(id)).filter(Boolean)
 

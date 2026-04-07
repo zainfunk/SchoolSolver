@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { useMockAuth } from '@/lib/mock-auth'
-import { USERS, CLUBS, getClubsByMember, getClubsByAdvisor, getAttendanceByUserAndClub, getUserById } from '@/lib/mock-data'
+import { USERS, getClubsByAdvisor, getAttendanceByUserAndClub, getUserById } from '@/lib/mock-data'
 import { supabase } from '@/lib/supabase'
 import { setName, setEmail, applyOverrides } from '@/lib/user-store'
 import { getProfile, setProfile, SOCIAL_PLATFORMS, PersonalSocialLink } from '@/lib/profile-store'
@@ -153,17 +153,27 @@ export default function ProfilePage() {
 
   // ---- Clubs & attendance ----
   const [myClubIds, setMyClubIds] = useState<string[]>([])
+  const [supabaseClubs, setSupabaseClubs] = useState<import('@/types').Club[]>([])
   useEffect(() => {
     if (!profileUser.id) return
     supabase.from('memberships').select('club_id').eq('user_id', profileUser.id).then(({ data }) => {
-      setMyClubIds((data ?? []).map((r) => r.club_id))
+      const ids = (data ?? []).map((r) => r.club_id)
+      setMyClubIds(ids)
+      if (ids.length > 0) {
+        supabase.from('clubs').select('id, name, icon_url, advisor_id').in('id', ids).then(({ data: clubData }) => {
+          if (clubData) {
+            setSupabaseClubs(clubData.map((d) => ({
+              id: d.id, name: d.name, iconUrl: d.icon_url ?? undefined, advisorId: d.advisor_id ?? '',
+              description: '', memberIds: [], leadershipPositions: [], socialLinks: [], meetingTimes: [],
+              tags: [], eventCreatorIds: [], capacity: null, autoAccept: false, createdAt: '',
+            })))
+          }
+        })
+      }
     })
   }, [profileUser.id])
 
-  const mockMemberClubs = getClubsByMember(profileUser.id)
-  const supabaseMemberClubs = CLUBS.filter((c) => myClubIds.includes(c.id))
-  const allMemberClubIds = new Set([...mockMemberClubs.map((c) => c.id), ...supabaseMemberClubs.map((c) => c.id)])
-  const memberClubs = CLUBS.filter((c) => allMemberClubIds.has(c.id))
+  const memberClubs = supabaseClubs
 
   const advisingClubs = profileUser.role === 'advisor' || profileUser.role === 'admin'
     ? getClubsByAdvisor(profileUser.id) : []

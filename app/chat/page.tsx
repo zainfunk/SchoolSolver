@@ -4,9 +4,9 @@ import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { useMockAuth } from '@/lib/mock-auth'
 import { useChatStore } from '@/lib/chat-store'
-import { CLUBS, USERS } from '@/lib/mock-data'
 import { supabase } from '@/lib/supabase'
-import { User, Role } from '@/types'
+import { USERS } from '@/lib/mock-data'
+import { Club, User, Role } from '@/types'
 import Avatar from '@/components/Avatar'
 import { MessageSquare } from 'lucide-react'
 
@@ -14,14 +14,23 @@ export default function ChatPage() {
   const { currentUser } = useMockAuth()
   const { messages } = useChatStore()
   const [myClubIds, setMyClubIds] = useState<string[]>([])
+  const [schoolClubs, setSchoolClubs] = useState<Club[]>([])
   const [supabaseUsers, setSupabaseUsers] = useState<Record<string, User>>({})
 
   useEffect(() => {
-    if (!currentUser.id) return
+    if (!currentUser.id || !currentUser.schoolId) return
     supabase.from('memberships').select('club_id').eq('user_id', currentUser.id).then(({ data }) => {
       setMyClubIds((data ?? []).map((r) => r.club_id))
     })
-  }, [currentUser.id])
+    // Load all clubs in this school for admin view
+    supabase.from('clubs').select('id, name, icon_url, advisor_id').eq('school_id', currentUser.schoolId).then(({ data }) => {
+      if (data) setSchoolClubs(data.map((d) => ({
+        id: d.id, name: d.name, iconUrl: d.icon_url ?? undefined, advisorId: d.advisor_id ?? '',
+        description: '', memberIds: [], leadershipPositions: [], socialLinks: [], meetingTimes: [],
+        tags: [], eventCreatorIds: [], capacity: null, autoAccept: false, createdAt: '',
+      })))
+    })
+  }, [currentUser.id, currentUser.schoolId])
 
   useEffect(() => {
     // Fetch user data for any message sender IDs not in mock data
@@ -44,12 +53,8 @@ export default function ChatPage() {
   }
 
   const clubs = currentUser.role === 'admin'
-    ? CLUBS
-    : CLUBS.filter((c) =>
-        myClubIds.includes(c.id) ||
-        c.memberIds.includes(currentUser.id) ||
-        c.advisorId === currentUser.id
-      )
+    ? schoolClubs
+    : schoolClubs.filter((c) => myClubIds.includes(c.id) || c.advisorId === currentUser.id)
 
   return (
     <div className="max-w-2xl mx-auto">
