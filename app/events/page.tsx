@@ -1,8 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { EVENTS, CLUBS } from '@/lib/mock-data'
+import { supabase } from '@/lib/supabase'
+import { ClubEvent } from '@/types'
 import { Search, Clock, MapPin } from 'lucide-react'
 
 const CLUB_COLORS: Record<string, { spine: string; spineText: string; badge: string; badgeText: string; panel: string }> = {
@@ -18,10 +20,26 @@ const DEFAULT_COLORS = { spine: 'bg-blue-50', spineText: 'text-blue-800', badge:
 export default function EventsPage() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'past'>('upcoming')
+  const [events, setEvents] = useState<ClubEvent[]>(EVENTS)
+
+  useEffect(() => {
+    supabase.from('events').select('*').then(({ data }) => {
+      if (!data?.length) return
+      const supabaseEvents: ClubEvent[] = data.map((e) => ({
+        id: e.id, clubId: e.club_id, title: e.title, description: e.description ?? '',
+        date: e.date, location: e.location ?? undefined, isPublic: e.is_public, createdBy: e.created_by,
+      }))
+      setEvents((prev) => {
+        const map = new Map(prev.map((e) => [e.id, e]))
+        for (const e of supabaseEvents) map.set(e.id, e)
+        return Array.from(map.values())
+      })
+    })
+  }, [])
 
   const today = new Date().toISOString().split('T')[0]
 
-  const publicEvents = EVENTS.filter((e) => e.isPublic)
+  const publicEvents = events.filter((e) => e.isPublic)
     .filter((e) => {
       const q = search.toLowerCase()
       const club = CLUBS.find((c) => c.id === e.clubId)
