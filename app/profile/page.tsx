@@ -92,8 +92,6 @@ function computeAchievements(
 export default function ProfilePage() {
   const { currentUser } = useMockAuth()
 
-  if (!currentUser.id) return null
-
   const isAdmin = currentUser.role === 'admin'
 
   // For admin browsing other (mock) users; own profile always uses real currentUser
@@ -209,6 +207,9 @@ export default function ProfilePage() {
     ...(profileUser.role === 'student' ? [{ key: 'attendance' as Tab, label: 'ATTENDANCE' }] : []),
     { key: 'achievements', label: 'ACHIEVEMENTS' },
   ]
+
+  // Guard after all hooks — currentUser.id is empty during the loading state
+  if (!currentUser.id) return null
 
   const roleAccent: Record<string, string> = {
     admin:   '#EF4444',
