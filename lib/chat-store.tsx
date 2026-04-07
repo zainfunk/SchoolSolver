@@ -14,19 +14,38 @@ const ChatContext = createContext<ChatContextValue | null>(null)
 export function ChatProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
 
-  useEffect(() => {
-    supabase.from('chat_messages').select('*').order('sent_at').then(({ data }) => {
-      if (data) setMessages(data.map(mapMessage))
+  function mergeMessages(incoming: ChatMessage[]) {
+    setMessages((prev) => {
+      const map = new Map(prev.map((m) => [m.id, m]))
+      for (const m of incoming) map.set(m.id, m)
+      return Array.from(map.values()).sort((a, b) => a.sentAt.localeCompare(b.sentAt))
     })
+  }
 
+  function fetchAll() {
+    supabase.from('chat_messages').select('*').order('sent_at').then(({ data }) => {
+      if (data) mergeMessages(data.map(mapMessage))
+    })
+  }
+
+  useEffect(() => {
+    fetchAll()
+
+    // Real-time subscription (requires table added to Supabase Realtime publication)
     const channel = supabase
       .channel('chat_messages')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, (payload) => {
-        setMessages((prev) => [...prev, mapMessage(payload.new as Record<string, unknown>)])
+        mergeMessages([mapMessage(payload.new as Record<string, unknown>)])
       })
       .subscribe()
 
-    return () => { supabase.removeChannel(channel) }
+    // Polling fallback — keeps messages in sync even if Realtime isn't enabled
+    const interval = setInterval(fetchAll, 4000)
+
+    return () => {
+      supabase.removeChannel(channel)
+      clearInterval(interval)
+    }
   }, [])
 
   async function sendMessage(clubId: string, senderId: string, content: string) {
@@ -37,16 +56,20 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       content: content.trim(),
       sentAt: new Date().toISOString(),
     }
-    // Optimistically add to local state immediately
+    // Optimistically add to local state
     setMessages((prev) => [...prev, msg])
-    // Persist to Supabase in background
-    supabase.from('chat_messages').insert({
+    // Persist to Supabase and remove optimistic message on failure
+    const { error } = await supabase.from('chat_messages').insert({
       id: msg.id,
       club_id: msg.clubId,
       sender_id: msg.senderId,
       content: msg.content,
       sent_at: msg.sentAt,
     })
+    if (error) {
+      console.error('Failed to send message:', error)
+      setMessages((prev) => prev.filter((m) => m.id !== msg.id))
+    }
   }
 
   return (
