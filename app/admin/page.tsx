@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useMockAuth } from '@/lib/mock-auth'
 import { CLUBS as INITIAL_CLUBS, USERS, SCHOOL_ELECTIONS as INITIAL_ELECTIONS } from '@/lib/mock-data'
 import { supabase } from '@/lib/supabase'
-import { Club, SchoolElection, PollCandidate } from '@/types'
+import { Club, SchoolElection, PollCandidate, User, Role } from '@/types'
 import RoleGuard from '@/components/layout/RoleGuard'
 import ClubForm from '@/components/admin/ClubForm'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -21,6 +21,19 @@ export default function AdminPage() {
   const { currentUser } = useMockAuth()
   const [clubs, setClubs] = useState<Club[]>(INITIAL_CLUBS)
   const [elections, setElections] = useState<SchoolElection[]>(INITIAL_ELECTIONS)
+  const [allUsers, setAllUsers] = useState<User[]>(USERS)
+
+  useEffect(() => {
+    // Merge Supabase users (real Clerk accounts) with mock users
+    supabase.from('users').select('id, name, email, role').then(({ data }) => {
+      if (!data?.length) return
+      setAllUsers((prev) => {
+        const map = new Map(prev.map((u) => [u.id, u]))
+        for (const u of data) map.set(u.id, { id: u.id, name: u.name, email: u.email, role: u.role as Role })
+        return Array.from(map.values())
+      })
+    })
+  }, [])
 
   useEffect(() => {
     // Load elections from Supabase
@@ -60,8 +73,8 @@ export default function AdminPage() {
   const [electionDescription, setElectionDescription] = useState('')
   const [electionCandidateIds, setElectionCandidateIds] = useState<string[]>([])
 
-  const advisors = USERS.filter((u) => u.role === 'advisor')
-  const students = USERS.filter((u) => u.role === 'student')
+  const advisors = allUsers.filter((u) => u.role === 'advisor')
+  const students = allUsers.filter((u) => u.role === 'student')
 
   async function handleCreateClub(
     data: Omit<Club, 'id' | 'memberIds' | 'leadershipPositions' | 'socialLinks' | 'meetingTimes' | 'createdAt'>
@@ -117,7 +130,7 @@ export default function AdminPage() {
   }
 
   function getUserById(id: string) {
-    return USERS.find((u) => u.id === id)
+    return allUsers.find((u) => u.id === id)
   }
 
   return (
@@ -143,7 +156,7 @@ export default function AdminPage() {
             </h2>
             <div className="space-y-3">
               {clubs.map((club) => {
-                const advisor = USERS.find((u) => u.id === club.advisorId)
+                const advisor = allUsers.find((u) => u.id === club.advisorId)
                 const spotsLeft = club.capacity !== null ? club.capacity - club.memberIds.length : null
                 return (
                   <Card key={club.id}>
@@ -199,7 +212,7 @@ export default function AdminPage() {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {USERS.map(applyOverrides).filter((u) => u.role === 'student').map((student) => {
+                {allUsers.filter((u) => u.role === 'student').map(applyOverrides).map((student) => {
                   const clubs = getClubsByMember(student.id)
                   return (
                     <tr key={student.id} className="hover:bg-gray-50 transition-colors">
