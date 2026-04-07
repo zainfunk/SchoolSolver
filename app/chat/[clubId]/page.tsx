@@ -7,6 +7,7 @@ import { useMockAuth } from '@/lib/mock-auth'
 import { useChatStore } from '@/lib/chat-store'
 import { CLUBS, USERS } from '@/lib/mock-data'
 import { supabase } from '@/lib/supabase'
+import { User, Role } from '@/types'
 import Avatar from '@/components/Avatar'
 import { ArrowLeft, Send, MessageSquare } from 'lucide-react'
 
@@ -34,6 +35,8 @@ export default function ClubChatPage({ params }: { params: Promise<{ clubId: str
   const [draft, setDraft] = useState('')
   const [myClubIds, setMyClubIds] = useState<string[]>([])
   const [accessChecked, setAccessChecked] = useState(false)
+  const [clubMemberIds, setClubMemberIds] = useState<string[]>([])
+  const [supabaseUsers, setSupabaseUsers] = useState<Record<string, User>>({})
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -46,6 +49,27 @@ export default function ClubChatPage({ params }: { params: Promise<{ clubId: str
       setAccessChecked(true)
     })
   }, [currentUser.id])
+
+  useEffect(() => {
+    // Load all members of this club from Supabase, then fetch user data for unknowns
+    supabase.from('memberships').select('user_id').eq('club_id', clubId).then(({ data }) => {
+      if (!data?.length) return
+      const ids = data.map((r) => r.user_id)
+      setClubMemberIds(ids)
+      const unknownIds = ids.filter((uid) => !USERS.find((u) => u.id === uid))
+      if (unknownIds.length > 0) {
+        supabase.from('users').select('id, name, email, role').in('id', unknownIds).then(({ data: userData }) => {
+          if (userData?.length) {
+            setSupabaseUsers((prev) => {
+              const next = { ...prev }
+              for (const u of userData) next[u.id] = { id: u.id, name: u.name, email: u.email, role: u.role as Role }
+              return next
+            })
+          }
+        })
+      }
+    })
+  }, [clubId])
 
   const canAccess =
     currentUser.role === 'admin' ||
@@ -65,12 +89,18 @@ export default function ClubChatPage({ params }: { params: Promise<{ clubId: str
 
   if (!accessChecked || !club || !canAccess) return null
 
+  function resolveUser(userId: string): User | undefined {
+    return USERS.find((u) => u.id === userId) ?? supabaseUsers[userId]
+  }
+
   const accessibleClubs = currentUser.role === 'admin'
     ? CLUBS
     : CLUBS.filter((c) => myClubIds.includes(c.id) || c.memberIds.includes(currentUser.id) || c.advisorId === currentUser.id)
   const clubMessages = messages.filter((m) => m.clubId === clubId)
-  const advisor = USERS.find((u) => u.id === club.advisorId)
-  const members = club.memberIds.map((id) => USERS.find((u) => u.id === id)).filter(Boolean)
+  const advisor = resolveUser(club.advisorId)
+  // Merge mock memberIds with Supabase-fetched member IDs for this club
+  const allMemberIds = Array.from(new Set([...club.memberIds, ...clubMemberIds]))
+  const members = allMemberIds.map((id) => resolveUser(id)).filter(Boolean)
 
   // Group messages by date
   const grouped: { date: string; msgs: typeof clubMessages }[] = []
@@ -116,7 +146,7 @@ export default function ClubChatPage({ params }: { params: Promise<{ clubId: str
             accessibleClubs.map((c) => {
               const isActive = c.id === clubId
               const lastMsg = messages.filter((m) => m.clubId === c.id).slice(-1)[0]
-              const lastSender = lastMsg ? USERS.find((u) => u.id === lastMsg.senderId) : null
+              const lastSender = lastMsg ? resolveUser(lastMsg.senderId) : null
               return (
                 <Link key={c.id} href={`/chat/${c.id}`}>
                   <div className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors ${
@@ -195,7 +225,7 @@ export default function ClubChatPage({ params }: { params: Promise<{ clubId: str
 
               <div className="space-y-3">
                 {group.msgs.map((msg, i) => {
-                  const sender = USERS.find((u) => u.id === msg.senderId)
+                  const sender = resolveUser(msg.senderId)
                   const isMe = msg.senderId === currentUser.id
                   const prevMsg = group.msgs[i - 1]
                   const showAvatar = !isMe && msg.senderId !== prevMsg?.senderId
