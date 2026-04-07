@@ -39,7 +39,7 @@ type Tab = 'overview' | 'clubs' | 'attendance' | 'achievements'
 
 // Derived achievements based on real user data
 function computeAchievements(
-  memberClubs: ReturnType<typeof getClubsByMember>,
+  memberClubs: import('@/types').Club[],
   allRecords: AttendanceRecord[],
 ) {
   const achievements: { icon: React.ReactNode; title: string; desc: string; earned: boolean }[] = []
