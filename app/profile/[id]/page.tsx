@@ -8,6 +8,7 @@ import {
   USERS, CLUBS, getClubsByMember, getClubsByAdvisor,
   getAttendanceByUserAndClub, getUserById,
 } from '@/lib/mock-data'
+import { supabase } from '@/lib/supabase'
 import { applyOverrides, setName, setEmail } from '@/lib/user-store'
 import {
   getProfile, setProfile as saveProfileStore,
@@ -17,7 +18,7 @@ import {
   getAdminSettings, canViewAchievements, canViewAttendance, canViewClubs,
 } from '@/lib/settings-store'
 import { getRecordsByClub } from '@/lib/attendance-store'
-import { AttendanceRecord } from '@/types'
+import { AttendanceRecord, User, Role } from '@/types'
 import Avatar from '@/components/Avatar'
 import { Input } from '@/components/ui/input'
 import AttendanceCalendar from '@/components/profile/AttendanceCalendar'
@@ -71,25 +72,37 @@ export default function ViewProfilePage({ params }: PageProps) {
 
   if (!currentUser.id) return null
 
-  const rawUser = USERS.find((u) => u.id === id)
-  if (!rawUser) notFound()
+  // Resolve user: check mock data first, then Supabase for real Clerk accounts
+  const [rawUser, setRawUser] = useState<User | null>(() => USERS.find((u) => u.id === id) ?? null)
+  const [userLoading, setUserLoading] = useState(!USERS.find((u) => u.id === id))
+
+  useEffect(() => {
+    if (!userLoading) return
+    supabase.from('users').select('id, name, email, role').eq('id', id).maybeSingle().then(({ data }) => {
+      if (data) setRawUser({ id: data.id, name: data.name, email: data.email, role: data.role as Role })
+      setUserLoading(false)
+    })
+  }, [id])
+
+  // Safe placeholder so hooks below can always derive values (shown only during load)
+  const profileUser = rawUser ? applyOverrides(rawUser) : { id, name: '', email: '', role: 'student' as Role }
 
   const [, forceRefresh] = useState(0)
-  const profileUser = applyOverrides(rawUser)
 
   const isAdmin = currentUser.role === 'admin'
   const isAdvisor = currentUser.role === 'advisor'
   const isOwnProfile = currentUser.id === profileUser.id
   const canEdit = isAdmin
 
-  const accent = roleAccent[profileUser.role]
+  const accent = roleAccent[profileUser.role] ?? roleAccent.student
 
   const [profile, setProfileState] = useState({
     bio: '', skills: [] as string[], interests: [] as string[], socials: [] as PersonalSocialLink[],
   })
   useEffect(() => {
+    if (!rawUser) return
     getProfile(profileUser.id).then(setProfileState)
-  }, [profileUser.id])
+  }, [profileUser.id, rawUser])
 
   async function persistProfile(partial: Parameters<typeof saveProfileStore>[1]) {
     await saveProfileStore(profileUser.id, partial)
@@ -99,13 +112,14 @@ export default function ViewProfilePage({ params }: PageProps) {
   // ---- Name editing (admin only) ----
   const [editingName, setEditingName] = useState(false)
   const [nameInput, setNameInput] = useState('')
-  const [displayName, setDisplayName] = useState(profileUser.name)
-  const [displayEmail, setDisplayEmail] = useState(profileUser.email)
+  const [displayName, setDisplayName] = useState('')
+  const [displayEmail, setDisplayEmail] = useState('')
 
   useEffect(() => {
+    if (!rawUser) return
     setDisplayName(applyOverrides(rawUser).name)
     setDisplayEmail(applyOverrides(rawUser).email)
-  }, [id])
+  }, [id, rawUser])
 
   function saveName() {
     if (!nameInput.trim()) return
@@ -212,6 +226,10 @@ export default function ViewProfilePage({ params }: PageProps) {
     ...(profileUser.role === 'student' && attendanceClubs.length > 0 ? [{ key: 'attendance' as Tab, label: 'ATTENDANCE' }] : []),
     ...(showAchievements ? [{ key: 'achievements' as Tab, label: 'ACHIEVEMENTS' }] : []),
   ]
+
+  // Guards after all hooks
+  if (userLoading) return null
+  if (!rawUser) notFound()
 
   return (
     <div className="max-w-2xl mx-auto space-y-0">
