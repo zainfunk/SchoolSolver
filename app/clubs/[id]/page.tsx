@@ -7,7 +7,7 @@ import { useMockAuth } from '@/lib/mock-auth'
 import { supabase } from '@/lib/supabase'
 import {
   CLUBS, MEMBERSHIPS, JOIN_REQUESTS, POLLS,
-  getUserById, getEventsByClub, getAttendanceByClub, getNewsByClub, USERS,
+  getUserById, getEventsByClub, getAttendanceByClub, getNewsByClub,
 } from '@/lib/mock-data'
 import {
   getSessionsByClub, saveSession, upsertRecord, getRecordsByClub,
@@ -21,7 +21,7 @@ import {
   ClockIcon, Vote, Plus, Trash2, UserCheck, Pencil, Newspaper, Camera,
   MessageCircle, Tv, Video, Link as LinkIcon, QrCode, Copy, ArrowLeft, Mail,
 } from 'lucide-react'
-import { JoinRequest, LeadershipPosition, Poll, ClubEvent, ClubNews, SocialLink, SocialPlatform, MeetingTime, AttendanceRecord, AttendanceSession } from '@/types'
+import { User, Role, JoinRequest, LeadershipPosition, Poll, ClubEvent, ClubNews, SocialLink, SocialPlatform, MeetingTime, AttendanceRecord, AttendanceSession } from '@/types'
 import Avatar from '@/components/Avatar'
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -56,6 +56,8 @@ export default function ClubDetailPage({ params }: PageProps) {
   const [memberships, setMemberships] = useState(MEMBERSHIPS)
   const [requests, setRequests] = useState<JoinRequest[]>(JOIN_REQUESTS)
   const [polls, setPolls] = useState<Poll[]>(POLLS)
+  // Users fetched from Supabase for IDs not in mock data (e.g. real Clerk accounts)
+  const [supabaseUsers, setSupabaseUsers] = useState<Record<string, User>>({})
 
   useEffect(() => {
     // Merge Supabase memberships into local club state
@@ -74,6 +76,19 @@ export default function ClubDetailPage({ params }: PageProps) {
         const newMemberIds = data.map((r) => r.user_id).filter((uid) => !c.memberIds.includes(uid))
         return newMemberIds.length ? { ...c, memberIds: [...c.memberIds, ...newMemberIds] } : c
       }))
+      // Fetch user data for any member IDs not in mock data
+      const unknownIds = data.map((r) => r.user_id).filter((uid) => !getUserById(uid))
+      if (unknownIds.length > 0) {
+        supabase.from('users').select('id, name, email, role').in('id', unknownIds).then(({ data: userData }) => {
+          if (userData?.length) {
+            setSupabaseUsers((prev) => {
+              const next = { ...prev }
+              for (const u of userData) next[u.id] = { id: u.id, name: u.name, email: u.email, role: u.role as Role }
+              return next
+            })
+          }
+        })
+      }
     })
     // Merge Supabase join requests
     supabase.from('join_requests').select('*').eq('club_id', id).then(({ data }) => {
@@ -86,6 +101,19 @@ export default function ClubDetailPage({ params }: PageProps) {
         }
         return merged
       })
+      // Fetch user data for any requester IDs not in mock data
+      const unknownIds = data.map((r) => r.user_id).filter((uid) => !getUserById(uid))
+      if (unknownIds.length > 0) {
+        supabase.from('users').select('id, name, email, role').in('id', unknownIds).then(({ data: userData }) => {
+          if (userData?.length) {
+            setSupabaseUsers((prev) => {
+              const next = { ...prev }
+              for (const u of userData) next[u.id] = { id: u.id, name: u.name, email: u.email, role: u.role as Role }
+              return next
+            })
+          }
+        })
+      }
     })
   }, [id])
   const [clubEvents, setClubEvents] = useState<ClubEvent[]>(() => getEventsByClub(id))
@@ -233,8 +261,12 @@ export default function ClubDetailPage({ params }: PageProps) {
   if (!foundClub) notFound()
   const club = foundClub!
 
-  const advisor = getUserById(club.advisorId)
-  const members = club.memberIds.map((mid) => getUserById(mid)).filter(Boolean)
+  function resolveUser(userId: string): User | undefined {
+    return getUserById(userId) ?? supabaseUsers[userId]
+  }
+
+  const advisor = resolveUser(club.advisorId)
+  const members = club.memberIds.map((mid) => resolveUser(mid)).filter(Boolean)
 
   const isMember = club.memberIds.includes(currentUser.id)
   const isAdvisor = currentUser.role === 'advisor' && club.advisorId === currentUser.id
@@ -250,7 +282,7 @@ export default function ClubDetailPage({ params }: PageProps) {
 
   // Per-member attendance
   const memberAttendance = club.memberIds.map((mid) => {
-    const user = getUserById(mid)
+    const user = resolveUser(mid)
     const records = attendanceRecords.filter((r) => r.userId === mid)
     const present = records.filter((r) => r.present).length
     return { user, records, total: records.length, present }
@@ -878,7 +910,7 @@ export default function ClubDetailPage({ params }: PageProps) {
             )}
             <div className="space-y-5">
               {club.leadershipPositions.map((pos) => {
-                const holder = pos.userId ? getUserById(pos.userId) : null
+                const holder = pos.userId ? resolveUser(pos.userId) : null
                 return (
                   <div key={pos.id} className="group">
                     <div className="flex items-center justify-between mb-1">
@@ -1008,7 +1040,7 @@ export default function ClubDetailPage({ params }: PageProps) {
           )}
 
           {(isMember || isAdvisor) && clubNews.map((news) => {
-            const author = getUserById(news.authorId)
+            const author = resolveUser(news.authorId)
             const canDelete = isAdvisor || news.authorId === currentUser.id
             if (news.isPinned) {
               return (
@@ -1318,7 +1350,7 @@ export default function ClubDetailPage({ params }: PageProps) {
                   </p>
                 )}
                 {pendingRequests.map((req) => {
-                  const student = getUserById(req.userId)
+                  const student = resolveUser(req.userId)
                   return (
                     <div key={req.id} className="flex items-center justify-between gap-3 py-3 border-b border-gray-50 last:border-0">
                       <div className="flex items-center gap-3">
@@ -1589,12 +1621,12 @@ export default function ClubDetailPage({ params }: PageProps) {
                       </div>
                       {winner && (
                         <p className="text-xs font-bold text-emerald-700 bg-emerald-50 rounded-xl px-3 py-2 mb-3">
-                          Winner: {getUserById(winner.userId)?.name}
+                          Winner: {resolveUser(winner.userId)?.name}
                         </p>
                       )}
                       <div className="space-y-2.5">
                         {poll.candidates.map((candidate) => {
-                          const user = getUserById(candidate.userId)
+                          const user = resolveUser(candidate.userId)
                           const pct = totalVotes > 0 ? Math.round((candidate.votes.length / totalVotes) * 100) : 0
                           const hasVotedThis = candidate.votes.includes(currentUser.id)
                           return (

@@ -6,6 +6,7 @@ import { useMockAuth } from '@/lib/mock-auth'
 import { useChatStore } from '@/lib/chat-store'
 import { CLUBS, USERS } from '@/lib/mock-data'
 import { supabase } from '@/lib/supabase'
+import { User, Role } from '@/types'
 import Avatar from '@/components/Avatar'
 import { MessageSquare } from 'lucide-react'
 
@@ -13,6 +14,7 @@ export default function ChatPage() {
   const { currentUser } = useMockAuth()
   const { messages } = useChatStore()
   const [myClubIds, setMyClubIds] = useState<string[]>([])
+  const [supabaseUsers, setSupabaseUsers] = useState<Record<string, User>>({})
 
   useEffect(() => {
     if (!currentUser.id) return
@@ -20,6 +22,26 @@ export default function ChatPage() {
       setMyClubIds((data ?? []).map((r) => r.club_id))
     })
   }, [currentUser.id])
+
+  useEffect(() => {
+    // Fetch user data for any message sender IDs not in mock data
+    const senderIds = Array.from(new Set(messages.map((m) => m.senderId)))
+    const unknownIds = senderIds.filter((uid) => !USERS.find((u) => u.id === uid))
+    if (unknownIds.length === 0) return
+    supabase.from('users').select('id, name, email, role').in('id', unknownIds).then(({ data }) => {
+      if (data?.length) {
+        setSupabaseUsers((prev) => {
+          const next = { ...prev }
+          for (const u of data) next[u.id] = { id: u.id, name: u.name, email: u.email, role: u.role as Role }
+          return next
+        })
+      }
+    })
+  }, [messages])
+
+  function resolveUser(userId: string): User | undefined {
+    return USERS.find((u) => u.id === userId) ?? supabaseUsers[userId]
+  }
 
   const clubs = currentUser.role === 'admin'
     ? CLUBS
@@ -55,8 +77,8 @@ export default function ChatPage() {
           {clubs.map((club) => {
             const clubMessages = messages.filter((m) => m.clubId === club.id)
             const last = clubMessages[clubMessages.length - 1]
-            const lastSender = last ? USERS.find((u) => u.id === last.senderId) : null
-            const advisor = USERS.find((u) => u.id === club.advisorId)
+            const lastSender = last ? resolveUser(last.senderId) : null
+            const advisor = resolveUser(club.advisorId)
 
             return (
               <Link key={club.id} href={`/chat/${club.id}`}>
