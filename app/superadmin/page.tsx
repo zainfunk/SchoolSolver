@@ -250,8 +250,10 @@ function InviteModal({ onClose }: { onClose: () => void }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? 'Failed to generate link')
+      const text = await res.text()
+      let data: Record<string, string> = {}
+      try { data = JSON.parse(text) } catch { /* empty response */ }
+      if (!res.ok) throw new Error(data.error ?? `Server error (${res.status})`)
       setInviteUrl(`${window.location.origin}${data.inviteUrl}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong')
