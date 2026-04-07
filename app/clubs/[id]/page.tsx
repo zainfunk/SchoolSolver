@@ -1143,12 +1143,12 @@ export default function ClubDetailPage({ params }: PageProps) {
               </div>
             )}
 
-            {clubEvents.length === 0 && !showEventForm && (
-              <p className="text-sm text-gray-400 italic">No events scheduled.</p>
+            {clubEvents.filter((e) => e.date >= new Date().toISOString().split('T')[0]).length === 0 && !showEventForm && (
+              <p className="text-sm text-gray-400 italic">No upcoming events scheduled.</p>
             )}
 
             <div className="space-y-5">
-              {clubEvents.map((event) => {
+              {clubEvents.filter((e) => e.date >= new Date().toISOString().split('T')[0]).map((event) => {
                 const date = new Date(event.date + 'T00:00:00')
                 const canDelete = isAdvisor || event.createdBy === currentUser.id
                 return (
