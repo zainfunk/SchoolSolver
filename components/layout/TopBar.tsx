@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Search, Bell, Settings } from 'lucide-react'
+import { Search, Bell, Settings, Database } from 'lucide-react'
 import { UserButton } from '@clerk/nextjs'
 import { useMockAuth } from '@/lib/mock-auth'
 import Avatar from '@/components/Avatar'
@@ -15,6 +15,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/elections':  'Elections',
   '/profile':    'Profile',
   '/admin':      'Admin',
+  '/demo':       'Demo Data',
   '/settings':   'Settings',
 }
 
@@ -37,6 +38,17 @@ export default function TopBar() {
         {title}
       </h1>
       <div className="flex items-center gap-6">
+        <Link
+          href="/demo"
+          className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-bold uppercase tracking-widest transition-colors ${
+            pathname === '/demo'
+              ? 'bg-[#0058be] text-white'
+              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+          }`}
+        >
+          <Database className="w-3.5 h-3.5" />
+          Demo Data
+        </Link>
         <div className="relative">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
