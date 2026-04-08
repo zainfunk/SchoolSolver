@@ -209,6 +209,35 @@ export async function POST(request: NextRequest) {
       console.error('dev setup link error', error)
       return NextResponse.json({ error: 'Failed to generate a setup link' }, { status: 500 })
     }
+  } else if (action === 'set_my_role') {
+    if (!requester.schoolId) {
+      return NextResponse.json({ error: 'You do not belong to a school yet' }, { status: 400 })
+    }
+
+    if (!['student', 'advisor', 'admin'].includes(status)) {
+      return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
+    }
+
+    const client = await clerkClient()
+    const clerkUser = await client.users.getUser(requester.userId)
+
+    const { error } = await db
+      .from('users')
+      .upsert(
+        {
+          id: requester.userId,
+          name: clerkUser.fullName ?? clerkUser.username ?? 'Dev Tester',
+          email: clerkUser.primaryEmailAddress?.emailAddress ?? 'dev@clubit.app',
+          role: status,
+          school_id: requester.schoolId,
+        },
+        { onConflict: 'id' }
+      )
+
+    if (error) {
+      console.error('dev role update error', error)
+      return NextResponse.json({ error: 'Failed to update your saved school role' }, { status: 500 })
+    }
   } else {
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
   }

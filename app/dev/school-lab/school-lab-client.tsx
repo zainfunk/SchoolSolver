@@ -45,7 +45,7 @@ function CopyTextButton({ value }: { value: string }) {
 }
 
 export default function SchoolLabClient() {
-  const { currentUser, schoolName, schoolStatus, refreshSchoolContext } = useMockAuth()
+  const { actualUser, currentUser, schoolName, schoolStatus, refreshSchoolContext } = useMockAuth()
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null)
   const [newSchoolName, setNewSchoolName] = useState('Dev Test School')
   const [loading, setLoading] = useState(true)
@@ -131,7 +131,10 @@ export default function SchoolLabClient() {
               Signed in as <span className="font-medium text-gray-900">{currentUser.name}</span>
             </p>
             <p className="text-gray-500">
-              Effective role <span className="font-medium text-gray-900">{currentUser.role}</span>
+              Saved role <span className="font-medium text-gray-900">{snapshot?.currentRole ?? actualUser.role}</span>
+            </p>
+            <p className="text-gray-500">
+              Preview role <span className="font-medium text-gray-900">{currentUser.role}</span>
             </p>
             <p className="text-gray-500">
               School <span className="font-medium text-gray-900">{schoolName ?? 'None yet'}</span>
@@ -139,6 +142,34 @@ export default function SchoolLabClient() {
             <p className="text-gray-500">
               Lifecycle status <span className="font-medium text-gray-900">{schoolStatus ?? 'No school'}</span>
             </p>
+            {snapshot?.school && (
+              <div className="pt-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">Set my saved role</p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => void runAction('set_my_role', { status: 'admin' })}
+                    disabled={working !== null}
+                    className="rounded-xl bg-red-50 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-50"
+                  >
+                    Make me admin
+                  </button>
+                  <button
+                    onClick={() => void runAction('set_my_role', { status: 'advisor' })}
+                    disabled={working !== null}
+                    className="rounded-xl bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+                  >
+                    Make me advisor
+                  </button>
+                  <button
+                    onClick={() => void runAction('set_my_role', { status: 'student' })}
+                    disabled={working !== null}
+                    className="rounded-xl bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+                  >
+                    Make me student
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
