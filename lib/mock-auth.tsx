@@ -1,10 +1,10 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { useUser } from '@clerk/nextjs'
+import { useSession, useUser } from '@clerk/nextjs'
 import { usePathname, useRouter } from 'next/navigation'
 import { Role, SchoolStatus, User } from '@/types'
-import { supabase } from '@/lib/supabase'
+import { setSupabaseAccessTokenResolver, supabase } from '@/lib/supabase'
 
 interface SchoolSession {
   schoolId: string
@@ -100,6 +100,7 @@ function clearSchoolSession(userId: string) {
 
 export function MockAuthProvider({ children }: { children: ReactNode }) {
   const { user: clerkUser, isLoaded } = useUser()
+  const { session } = useSession()
   const [baseUser, setBaseUser] = useState<User>(LOADING_USER)
   const [schoolName, setSchoolName] = useState<string | null>(null)
   const [schoolStatus, setSchoolStatus] = useState<SchoolStatus | null>(null)
@@ -110,6 +111,18 @@ export function MockAuthProvider({ children }: { children: ReactNode }) {
   const [refreshTick, setRefreshTick] = useState(0)
   const router = useRouter()
   const pathname = usePathname()
+
+  useEffect(() => {
+    setSupabaseAccessTokenResolver(
+      session
+        ? async () => session.getToken()
+        : async () => null
+    )
+
+    return () => {
+      setSupabaseAccessTokenResolver(null)
+    }
+  }, [session])
 
   useEffect(() => {
     if (!isLoaded || !clerkUser) return

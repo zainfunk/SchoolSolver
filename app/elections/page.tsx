@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useMockAuth } from '@/lib/mock-auth'
 import { supabase } from '@/lib/supabase'
-import { hasVoted } from '@/lib/election-store'
+import { hasPollVoted, hasVoted } from '@/lib/election-store'
 import { hasResponded } from '@/lib/forms-store'
 import { useState, useEffect } from 'react'
 import { SchoolElection, Poll } from '@/types'
@@ -120,7 +120,7 @@ export default function FormsPage() {
   useEffect(() => {
     const allChecks = [
       ...openElections.map((e) => hasVoted(e.id, currentUser.id).then((v) => v ? e.id : null)),
-      ...openPolls.map((p) => hasVoted(p.id, currentUser.id).then((v) => v ? p.id : null)),
+      ...openPolls.map((p) => hasPollVoted(p.id, currentUser.id).then((v) => v ? p.id : null)),
       ...openForms.map((f) => hasResponded(f.id, currentUser.id).then((v) => v ? f.id : null)),
     ]
     Promise.all(allChecks).then((results) => {
@@ -135,7 +135,7 @@ export default function FormsPage() {
     ...openElections.map((e) => ({
       id: e.id, kind: 'election' as const,
       title: e.positionTitle, subtitle: 'School-wide Election',
-      description: e.description, closesAt: '2026-04-06T17:00:00Z',
+      description: e.description, closesAt: null,
       done: doneIds.has(e.id),
     })),
     ...openPolls.map((p) => {
@@ -196,7 +196,7 @@ export default function FormsPage() {
                 </p>
                 <div className="flex items-center gap-2 text-blue-200 text-xs mb-4">
                   <Clock className="w-3.5 h-3.5" />
-                  Polls close in 14 hours
+                  School-wide election is open now
                 </div>
                 <Link href={`/elections/${urgentElection.id}`}>
                   <button className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-[#0058be] bg-white transition-all hover:bg-blue-50">
