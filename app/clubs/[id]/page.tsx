@@ -9,7 +9,6 @@ import {
   saveSession, upsertRecord,
 } from '@/lib/attendance-store'
 import { castPollVote } from '@/lib/election-store'
-import { fetchClubDetail } from '@/lib/school-data'
 import { Input } from '@/components/ui/input'
 import {
   Users, Clock, MapPin, Globe, Crown, CheckCircle, XCircle,
@@ -77,30 +76,35 @@ export default function ClubDetailPage({ params }: PageProps) {
       if (!cancelled) setClubLoading(true)
     })
 
-    fetchClubDetail(id, currentUser.schoolId).then((detail) => {
-      if (cancelled) return
-
-      if (!detail) {
-        setClubs([])
-        setRequests([])
-        setPolls([])
-        setUsersById({})
-        setClubEvents([])
-        setClubNews([])
-        setAttendanceRecords([])
+    fetch(`/api/school/clubs/${id}`, { cache: 'no-store' })
+      .then(async (res) => {
+        if (cancelled) return
+        if (!res.ok) {
+          setClubs([])
+          setRequests([])
+          setPolls([])
+          setUsersById({})
+          setClubEvents([])
+          setClubNews([])
+          setAttendanceRecords([])
+          setClubLoading(false)
+          return
+        }
+        const detail = await res.json()
+        setClubs([detail.club])
+        setRequests(detail.requests)
+        setPolls(detail.polls)
+        setUsersById(detail.usersById)
+        setClubEvents(detail.events)
+        setClubNews(detail.news)
+        setAttendanceRecords(detail.attendanceRecords)
         setClubLoading(false)
-        return
-      }
-
-      setClubs([detail.club])
-      setRequests(detail.requests)
-      setPolls(detail.polls)
-      setUsersById(detail.usersById)
-      setClubEvents(detail.events)
-      setClubNews(detail.news)
-      setAttendanceRecords(detail.attendanceRecords)
-      setClubLoading(false)
-    })
+      })
+      .catch(() => {
+        if (cancelled) return
+        setClubs([])
+        setClubLoading(false)
+      })
 
     return () => {
       cancelled = true
