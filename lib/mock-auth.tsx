@@ -192,6 +192,18 @@ export function MockAuthProvider({ children }: { children: ReactNode }) {
       const schoolId = userData?.school_id ?? undefined
 
       if (!schoolId) {
+        if (cached?.schoolId) {
+          applyResolvedSchool({
+            role: clerkRole ?? cached.role,
+            schoolId: cached.schoolId,
+            schoolName: cached.schoolName,
+            schoolStatus: cached.schoolStatus ?? null,
+            setupCompletedAt: cached.setupCompletedAt ?? null,
+            persist: false,
+          })
+          return
+        }
+
         applyResolvedSchool({ role })
         return
       }
@@ -201,6 +213,18 @@ export function MockAuthProvider({ children }: { children: ReactNode }) {
         .select('name, contact_name, contact_email, status, setup_completed_at')
         .eq('id', schoolId)
         .maybeSingle()
+
+      if (!school && cached && cached.schoolId === schoolId) {
+        applyResolvedSchool({
+          role: clerkRole ?? cached.role,
+          schoolId: cached.schoolId,
+          schoolName: cached.schoolName,
+          schoolStatus: cached.schoolStatus ?? null,
+          setupCompletedAt: cached.setupCompletedAt ?? null,
+          persist: false,
+        })
+        return
+      }
 
       applyResolvedSchool({
         role,
