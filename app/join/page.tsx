@@ -4,11 +4,12 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
 import { Hash, CheckCircle } from 'lucide-react'
-import { saveSchoolSession } from '@/lib/mock-auth'
+import { saveSchoolSession, useMockAuth } from '@/lib/mock-auth'
 
 export default function JoinPage() {
   const router = useRouter()
   const { user: clerkUser } = useUser()
+  const { refreshSchoolContext } = useMockAuth()
   const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -38,8 +39,9 @@ export default function JoinPage() {
         })
       }
 
+      refreshSchoolContext()
       setSuccess({ schoolName: data.schoolName, role: data.role })
-      setTimeout(() => router.push('/dashboard'), 1800)
+      setTimeout(() => router.replace('/dashboard'), 1800)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong')
     } finally {
