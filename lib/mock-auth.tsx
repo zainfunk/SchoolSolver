@@ -1,32 +1,73 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { useUser } from '@clerk/nextjs'
-import { useRouter, usePathname } from 'next/navigation'
-import { User, Role } from '@/types'
+import { usePathname, useRouter } from 'next/navigation'
+import { Role, SchoolStatus, User } from '@/types'
 import { supabase } from '@/lib/supabase'
 
 interface SchoolSession {
   schoolId: string
   schoolName: string
   role: Role
+  schoolStatus?: SchoolStatus
+  setupCompletedAt?: string | null
 }
 
 interface AuthContextValue {
   currentUser: User
   schoolName: string | null
+  schoolStatus: SchoolStatus | null
   schoolPrincipal: string | null
   schoolContactEmail: string | null
+  schoolSetupCompletedAt: string | null
   devRole: Role | null
   setDevRole: (role: Role | null) => void
+  refreshSchoolContext: () => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 const LOADING_USER: User = { id: '', name: 'Loading...', email: '', role: 'student' }
 
-// Routes that don't require a school enrollment check
-const NO_SCHOOL_REQUIRED = ['/sign-in', '/sign-up', '/onboard', '/join', '/setup', '/superadmin']
+const NO_SCHOOL_REQUIRED = [
+  '/sign-in',
+  '/sign-up',
+  '/onboard',
+  '/join',
+  '/setup',
+  '/superadmin',
+  '/school',
+  '/dev',
+]
+
+const ENTRY_ROUTES = ['/join', '/onboard', '/school/suspended']
+
+function getRequiredRoute(pathname: string, role: Role, schoolId?: string, schoolStatus?: SchoolStatus | null) {
+  if (role === 'superadmin') return null
+
+  if (!schoolId) {
+    return NO_SCHOOL_REQUIRED.some((route) => pathname.startsWith(route)) ? null : '/join'
+  }
+
+  if (schoolStatus === 'pending') {
+    return pathname.startsWith('/onboard') || pathname.startsWith('/dev')
+      ? null
+      : '/onboard/pending'
+  }
+
+  if (schoolStatus === 'suspended') {
+    return pathname.startsWith('/school/suspended') || pathname.startsWith('/dev')
+      ? null
+      : '/school/suspended'
+  }
+
+  if (schoolStatus === 'active' && ENTRY_ROUTES.some((route) => pathname.startsWith(route))) {
+    return '/dashboard'
+  }
+
+  return null
+}
 
 function lsKey(userId: string) {
   return `clubit_school_${userId}`
@@ -49,74 +90,154 @@ export function saveSchoolSession(userId: string, session: SchoolSession) {
   }
 }
 
+function clearSchoolSession(userId: string) {
+  try {
+    localStorage.removeItem(lsKey(userId))
+  } catch {
+    // ignore
+  }
+}
+
 export function MockAuthProvider({ children }: { children: ReactNode }) {
   const { user: clerkUser, isLoaded } = useUser()
   const [baseUser, setBaseUser] = useState<User>(LOADING_USER)
   const [schoolName, setSchoolName] = useState<string | null>(null)
+  const [schoolStatus, setSchoolStatus] = useState<SchoolStatus | null>(null)
   const [schoolPrincipal, setSchoolPrincipal] = useState<string | null>(null)
   const [schoolContactEmail, setSchoolContactEmail] = useState<string | null>(null)
+  const [schoolSetupCompletedAt, setSchoolSetupCompletedAt] = useState<string | null>(null)
   const [devRole, setDevRole] = useState<Role | null>(null)
+  const [refreshTick, setRefreshTick] = useState(0)
   const router = useRouter()
   const pathname = usePathname()
-  const pathnameRef = useRef(pathname)
-  pathnameRef.current = pathname
 
   useEffect(() => {
     if (!isLoaded || !clerkUser) return
+
+    let cancelled = false
 
     const id = clerkUser.id
     const name = clerkUser.fullName ?? clerkUser.username ?? 'New User'
     const email = clerkUser.primaryEmailAddress?.emailAddress ?? ''
     const clerkRole = clerkUser.publicMetadata?.role as Role | undefined
 
-    // Check localStorage first — gives instant result without waiting for Supabase
-    const cached = getSchoolSession(id)
-    if (cached) {
-      const role = clerkRole ?? cached.role
-      setBaseUser({ id, name, email, role, schoolId: cached.schoolId })
-      setSchoolName(cached.schoolName)
-      // No redirect needed — user already has a school
+    function applyResolvedSchool(args: {
+      role: Role
+      schoolId?: string
+      schoolName?: string | null
+      schoolStatus?: SchoolStatus | null
+      contactName?: string | null
+      contactEmail?: string | null
+      setupCompletedAt?: string | null
+      persist?: boolean
+    }) {
+      if (cancelled) return
+
+      setBaseUser({ id, name, email, role: args.role, schoolId: args.schoolId })
+      setSchoolName(args.schoolName ?? null)
+      setSchoolStatus(args.schoolStatus ?? null)
+      setSchoolPrincipal(args.contactName ?? null)
+      setSchoolContactEmail(args.contactEmail ?? null)
+      setSchoolSetupCompletedAt(args.setupCompletedAt ?? null)
+
+      if (args.schoolId && args.schoolName && args.persist !== false) {
+        saveSchoolSession(id, {
+          schoolId: args.schoolId,
+          schoolName: args.schoolName,
+          role: args.role,
+          schoolStatus: args.schoolStatus ?? undefined,
+          setupCompletedAt: args.setupCompletedAt ?? null,
+        })
+      } else if (!args.schoolId) {
+        clearSchoolSession(id)
+      }
+
+      const redirectTarget = getRequiredRoute(
+        pathname,
+        args.role,
+        args.schoolId,
+        args.schoolStatus ?? null
+      )
+
+      if (redirectTarget && pathname !== redirectTarget) {
+        router.replace(redirectTarget)
+      }
     }
 
-    // Sync with Supabase in the background
-    supabase.from('users').upsert(
-      { id, name, email, role: clerkRole ?? 'student' },
-      { onConflict: 'id', ignoreDuplicates: true }
-    ).then(() => {
-      supabase.from('users').select('role, school_id').eq('id', id).maybeSingle().then(({ data }) => {
-        const role = clerkRole ?? (data?.role as Role) ?? 'student'
-        const schoolId = data?.school_id ?? undefined
-
-        setBaseUser({ id, name, email, role, schoolId })
-
-        if (schoolId) {
-          supabase.from('schools').select('name, contact_name, contact_email').eq('id', schoolId).maybeSingle().then(({ data: school }) => {
-            if (school?.name) {
-              setSchoolName(school.name)
-              setSchoolPrincipal(school.contact_name ?? null)
-              setSchoolContactEmail(school.contact_email ?? null)
-              saveSchoolSession(id, { schoolId, schoolName: school.name, role })
-            }
-          })
-        }
-
-        // Only redirect to /join if no cached session AND no Supabase school
-        const currentPath = pathnameRef.current
-        const skipCheck = NO_SCHOOL_REQUIRED.some(p => currentPath.startsWith(p))
-        const hasCached = !!getSchoolSession(id)
-        if (!skipCheck && role !== 'superadmin' && !schoolId && !hasCached) {
-          router.push('/join')
-        }
+    const cached = getSchoolSession(id)
+    if (cached) {
+      applyResolvedSchool({
+        role: clerkRole ?? cached.role,
+        schoolId: cached.schoolId,
+        schoolName: cached.schoolName,
+        schoolStatus: cached.schoolStatus ?? null,
+        setupCompletedAt: cached.setupCompletedAt ?? null,
+        persist: false,
       })
-    })
-  }, [isLoaded, clerkUser?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+    }
+
+    async function syncSchoolContext() {
+      await supabase.from('users').upsert(
+        { id, name, email, role: clerkRole ?? 'student' },
+        { onConflict: 'id', ignoreDuplicates: true }
+      )
+
+      const { data: userData } = await supabase
+        .from('users')
+        .select('role, school_id')
+        .eq('id', id)
+        .maybeSingle()
+
+      const role = clerkRole ?? (userData?.role as Role) ?? 'student'
+      const schoolId = userData?.school_id ?? undefined
+
+      if (!schoolId) {
+        applyResolvedSchool({ role })
+        return
+      }
+
+      const { data: school } = await supabase
+        .from('schools')
+        .select('name, contact_name, contact_email, status, setup_completed_at')
+        .eq('id', schoolId)
+        .maybeSingle()
+
+      applyResolvedSchool({
+        role,
+        schoolId: school ? schoolId : undefined,
+        schoolName: school?.name ?? null,
+        schoolStatus: (school?.status as SchoolStatus | undefined) ?? null,
+        contactName: school?.contact_name ?? null,
+        contactEmail: school?.contact_email ?? null,
+        setupCompletedAt: school?.setup_completed_at ?? null,
+      })
+    }
+
+    void syncSchoolContext()
+
+    return () => {
+      cancelled = true
+    }
+  }, [isLoaded, clerkUser?.id, pathname, refreshTick]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const currentUser: User = devRole
     ? { ...baseUser, role: devRole }
     : baseUser
 
   return (
-    <AuthContext.Provider value={{ currentUser, schoolName, schoolPrincipal, schoolContactEmail, devRole, setDevRole }}>
+    <AuthContext.Provider
+      value={{
+        currentUser,
+        schoolName,
+        schoolStatus,
+        schoolPrincipal,
+        schoolContactEmail,
+        schoolSetupCompletedAt,
+        devRole,
+        setDevRole,
+        refreshSchoolContext: () => setRefreshTick((tick) => tick + 1),
+      }}
+    >
       {children}
     </AuthContext.Provider>
   )

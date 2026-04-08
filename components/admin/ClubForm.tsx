@@ -19,16 +19,19 @@ export default function ClubForm({ advisors, onSubmit }: ClubFormProps) {
   const [capacity, setCapacity] = useState(20)
   const [advisorId, setAdvisorId] = useState(advisors[0]?.id ?? '')
   const [tags, setTags] = useState('')
+  const selectedAdvisorId = advisors.some((advisor) => advisor.id === advisorId)
+    ? advisorId
+    : (advisors[0]?.id ?? '')
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!name.trim() || !description.trim() || !advisorId) return
+    if (!name.trim() || !description.trim() || !selectedAdvisorId) return
     onSubmit({
       name: name.trim(),
       description: description.trim(),
       iconUrl: iconUrl.trim() || undefined,
       capacity: unlimited ? null : capacity,
-      advisorId,
+      advisorId: selectedAdvisorId,
       tags: tags ? tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
       autoAccept: false,
       eventCreatorIds: [],
@@ -80,19 +83,26 @@ export default function ClubForm({ advisors, onSubmit }: ClubFormProps) {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-medium text-gray-700 block mb-1">Advisor *</label>
+              <label className="text-xs font-medium text-gray-700 block mb-1">Advisor or owner *</label>
               <select
-                value={advisorId}
+                value={selectedAdvisorId}
                 onChange={(e) => setAdvisorId(e.target.value)}
                 className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
+                disabled={advisors.length === 0}
               >
+                {advisors.length === 0 && (
+                  <option value="">No advisors or admins available yet</option>
+                )}
                 {advisors.map((a) => (
                   <option key={a.id} value={a.id}>
                     {a.name}
                   </option>
                 ))}
               </select>
+              <p className="text-[11px] text-gray-400 mt-1">
+                Promote a user to advisor, or assign the club to an admin while the school is setting up.
+              </p>
             </div>
             <div>
               <label className="text-xs font-medium text-gray-700 block mb-1">Member Limit *</label>
@@ -126,7 +136,7 @@ export default function ClubForm({ advisors, onSubmit }: ClubFormProps) {
               placeholder="e.g. STEM, Art, Competition"
             />
           </div>
-          <Button type="submit" className="w-full">
+          <Button type="submit" className="w-full" disabled={advisors.length === 0}>
             Create Club
           </Button>
         </form>

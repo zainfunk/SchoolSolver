@@ -15,6 +15,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/elections':  'Elections',
   '/profile':    'Profile',
   '/admin':      'Admin',
+  '/dev/school-lab': 'School Lab',
   '/demo':       'Demo Data',
   '/settings':   'Settings',
 }
@@ -28,6 +29,7 @@ export default function TopBar() {
   const { currentUser } = useMockAuth()
   const pathname = usePathname()
   const title = usePageTitle(pathname)
+  const showDevTools = process.env.NODE_ENV === 'development'
 
   return (
     <header className="fixed top-0 left-64 right-0 h-16 glass-nav bg-white/80 flex justify-between items-center px-8 z-40 border-b border-slate-100/80">
@@ -38,6 +40,19 @@ export default function TopBar() {
         {title}
       </h1>
       <div className="flex items-center gap-6">
+        {showDevTools && (
+          <Link
+            href="/dev/school-lab"
+            className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-bold uppercase tracking-widest transition-colors ${
+              pathname === '/dev/school-lab'
+                ? 'bg-slate-900 text-white'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            <Database className="w-3.5 h-3.5" />
+            School Lab
+          </Link>
+        )}
         <Link
           href="/demo"
           className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-bold uppercase tracking-widest transition-colors ${

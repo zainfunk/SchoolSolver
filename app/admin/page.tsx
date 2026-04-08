@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input'
 import Link from 'next/link'
 import { applyOverrides } from '@/lib/user-store'
 import Avatar from '@/components/Avatar'
-import { Users, Shield, Vote, Plus, XCircle, GraduationCap, MessageSquare, CheckCircle, Clock } from 'lucide-react'
+import { Users, Shield, Vote, Plus, GraduationCap, MessageSquare, CheckCircle, Clock } from 'lucide-react'
 
 export default function AdminPage() {
   const { currentUser } = useMockAuth()
@@ -22,6 +22,8 @@ export default function AdminPage() {
   const [allUsers, setAllUsers] = useState<User[]>([])
   const [membershipsByUser, setMembershipsByUser] = useState<Record<string, string[]>>({})
   const [issueReports, setIssueReports] = useState<{ id: string; reporter_name: string; reporter_email: string; message: string; status: string; created_at: string }[]>([])
+  const [updatingRoleId, setUpdatingRoleId] = useState<string | null>(null)
+  const [roleError, setRoleError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!currentUser.schoolId) return
@@ -84,7 +86,7 @@ export default function AdminPage() {
         return filtered
       })
     })
-  }, [])
+  }, [currentUser.schoolId])
 
   // Election form state
   const [showElectionForm, setShowElectionForm] = useState(false)
@@ -92,8 +94,34 @@ export default function AdminPage() {
   const [electionDescription, setElectionDescription] = useState('')
   const [electionCandidateIds, setElectionCandidateIds] = useState<string[]>([])
 
-  const advisors = allUsers.filter((u) => u.role === 'advisor')
+  const staffOwners = allUsers.filter((u) => u.role === 'advisor' || u.role === 'admin')
   const students = allUsers.filter((u) => u.role === 'student')
+
+  async function updateUserRole(userId: string, role: Exclude<Role, 'superadmin'>) {
+    setUpdatingRoleId(userId)
+    setRoleError(null)
+
+    try {
+      const res = await fetch(`/api/school/users/${userId}/role`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role }),
+      })
+
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Failed to update role')
+
+      setAllUsers((prev) => prev.map((user) => (
+        user.id === userId
+          ? { ...user, role: role as Role }
+          : user
+      )))
+    } catch (err) {
+      setRoleError(err instanceof Error ? err.message : 'Failed to update role')
+    } finally {
+      setUpdatingRoleId(null)
+    }
+  }
 
   async function handleCreateClub(
     data: Omit<Club, 'id' | 'memberIds' | 'leadershipPositions' | 'socialLinks' | 'meetingTimes' | 'createdAt'>
@@ -167,7 +195,7 @@ export default function AdminPage() {
         {/* Clubs section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
           <div className="lg:col-span-1">
-            <ClubForm advisors={advisors} onSubmit={handleCreateClub} />
+            <ClubForm advisors={staffOwners} onSubmit={handleCreateClub} />
           </div>
 
           <div className="lg:col-span-2">
@@ -211,6 +239,61 @@ export default function AdminPage() {
               })}
             </div>
           </div>
+        </div>
+
+        {/* Staff & roles */}
+        <div className="border-t pt-8 mb-10">
+          <div className="flex items-center gap-3 mb-4">
+            <Shield className="w-5 h-5 text-blue-600" />
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">Staff & Role Management</h2>
+              <p className="text-sm text-gray-500">
+                Promote joined users to advisor so they can own clubs, manage rosters, and run attendance.
+              </p>
+            </div>
+          </div>
+
+          {roleError && (
+            <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3 mb-4">{roleError}</p>
+          )}
+
+          {allUsers.length === 0 ? (
+            <p className="text-sm text-gray-400">No users have joined this school yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {allUsers.map((user) => (
+                <Card key={user.id}>
+                  <CardContent className="py-4 px-4 flex items-center justify-between gap-4 flex-wrap">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-gray-900">{user.name}</span>
+                        <Badge variant="secondary" className="text-xs capitalize">{user.role}</Badge>
+                        {user.id === currentUser.id && (
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">You</span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-500 mt-1">{user.email}</p>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {(['student', 'advisor', 'admin'] as Exclude<Role, 'superadmin'>[]).map((nextRole) => (
+                        <Button
+                          key={nextRole}
+                          size="sm"
+                          variant={user.role === nextRole ? 'default' : 'outline'}
+                          className="h-8 text-xs capitalize"
+                          disabled={updatingRoleId === user.id || user.role === nextRole}
+                          onClick={() => updateUserRole(user.id, nextRole)}
+                        >
+                          {updatingRoleId === user.id ? 'Saving...' : nextRole}
+                        </Button>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Student Roster */}

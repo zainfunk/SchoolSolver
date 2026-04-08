@@ -34,6 +34,7 @@ export default function JoinPage() {
           schoolId: data.schoolId,
           schoolName: data.schoolName,
           role: data.role,
+          schoolStatus: data.schoolStatus,
         })
       }
 
