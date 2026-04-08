@@ -133,35 +133,24 @@ export default function AdminPage() {
   async function handleCreateClub(
     data: Omit<Club, 'id' | 'memberIds' | 'leadershipPositions' | 'socialLinks' | 'meetingTimes' | 'createdAt'>
   ) {
-    const ownerId = data.advisorId || currentUser.id
-
-    await supabase.from('users').upsert({
-      id: currentUser.id,
-      name: currentUser.name,
-      email: currentUser.email,
-      role: currentUser.role,
-      school_id: currentUser.schoolId,
-    }, { onConflict: 'id' })
-
-    const newClub: Club = {
-      ...data,
-      id: `club-${Date.now()}`,
-      advisorId: ownerId,
-      memberIds: [],
-      leadershipPositions: [],
-      socialLinks: [],
-      meetingTimes: [],
-      createdAt: new Date().toISOString().split('T')[0],
-      autoAccept: false,
-    }
-    await supabase.from('clubs').insert({
-      id: newClub.id, name: newClub.name, description: newClub.description,
-      icon_url: newClub.iconUrl, capacity: newClub.capacity,
-      advisor_id: ownerId, auto_accept: false,
-      tags: newClub.tags ?? [], event_creator_ids: [], created_at: newClub.createdAt,
-      school_id: currentUser.schoolId,
+    const res = await fetch('/api/school/clubs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
     })
+
+    const payload = await res.json()
+    if (!res.ok) {
+      throw new Error(payload.error ?? 'Failed to create club')
+    }
+
+    const newClub = payload.club as Club
     setClubs((prev) => [...prev, newClub])
+    setAllUsers((prev) => (
+      prev.some((user) => user.id === currentUser.id)
+        ? prev
+        : [...prev, { ...currentUser }]
+    ))
   }
 
   function toggleElectionCandidate(userId: string) {
