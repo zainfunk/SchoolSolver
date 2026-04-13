@@ -21,29 +21,21 @@ const DEFAULT_PROFILE: UserProfileData = {
 }
 
 export async function getProfile(userId: string): Promise<UserProfileData> {
-  const { data } = await supabase
-    .from('user_profiles')
-    .select('*')
-    .eq('user_id', userId)
-    .maybeSingle()
-  if (!data) return { ...DEFAULT_PROFILE }
-  return {
-    bio: data.bio ?? '',
-    skills: data.skills ?? [],
-    interests: data.interests ?? [],
-    socials: data.socials ?? [],
+  try {
+    const res = await fetch(`/api/user/profile?userId=${encodeURIComponent(userId)}`)
+    if (!res.ok) return { ...DEFAULT_PROFILE }
+    return await res.json() as UserProfileData
+  } catch {
+    return { ...DEFAULT_PROFILE }
   }
 }
 
 export async function setProfile(userId: string, partial: Partial<UserProfileData>): Promise<void> {
-  const current = await getProfile(userId)
-  await supabase.from('user_profiles').upsert({
-    user_id: userId,
-    bio: partial.bio ?? current.bio,
-    skills: partial.skills ?? current.skills,
-    interests: partial.interests ?? current.interests,
-    socials: partial.socials ?? current.socials,
-  }, { onConflict: 'user_id' })
+  await fetch(`/api/user/profile?userId=${encodeURIComponent(userId)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(partial),
+  })
 }
 
 // ---- Preset options ----

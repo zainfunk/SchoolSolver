@@ -1,26 +1,27 @@
-import { supabase } from '@/lib/supabase'
-
 export async function setName(userId: string, name: string): Promise<void> {
-  await supabase.from('user_overrides').upsert(
-    { user_id: userId, name: name.trim() },
-    { onConflict: 'user_id' }
-  )
+  await fetch(`/api/user/overrides?userId=${encodeURIComponent(userId)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: name.trim() }),
+  })
 }
 
 export async function setEmail(userId: string, email: string): Promise<void> {
-  await supabase.from('user_overrides').upsert(
-    { user_id: userId, email: email.trim() },
-    { onConflict: 'user_id' }
-  )
+  await fetch(`/api/user/overrides?userId=${encodeURIComponent(userId)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: email.trim() }),
+  })
 }
 
 export async function getOverride(userId: string): Promise<{ name?: string; email?: string }> {
-  const { data } = await supabase
-    .from('user_overrides')
-    .select('name, email')
-    .eq('user_id', userId)
-    .maybeSingle()
-  return data ?? {}
+  try {
+    const res = await fetch(`/api/user/overrides?userId=${encodeURIComponent(userId)}`)
+    if (!res.ok) return {}
+    return await res.json()
+  } catch {
+    return {}
+  }
 }
 
 /** Sync pass-through — overrides are loaded async per-component via getOverride(). */
