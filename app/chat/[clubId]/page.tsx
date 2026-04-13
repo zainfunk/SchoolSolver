@@ -9,7 +9,7 @@ import { fetchUsersByIds } from '@/lib/school-data'
 import { supabase } from '@/lib/supabase'
 import { Club, User } from '@/types'
 import Avatar from '@/components/Avatar'
-import { ArrowLeft, MessageSquare, Send } from 'lucide-react'
+import { ArrowLeft, MessageSquare, Send, Users } from 'lucide-react'
 
 function formatTime(iso: string) {
   const d = new Date(iso)
@@ -152,16 +152,20 @@ export default function ClubChatPage({ params }: { params: Promise<{ clubId: str
   }
 
   return (
-    <div className="-mx-8 -my-8 flex overflow-hidden" style={{ height: '100vh' }}>
-      <div className="w-60 shrink-0 bg-white border-r border-gray-100 flex flex-col overflow-hidden">
-        <div className="px-4 py-4 border-b border-gray-100 shrink-0">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Your Chats</p>
+    <div className="-mx-8 -my-8 flex overflow-hidden" style={{ height: '100vh', fontFamily: 'var(--font-inter)' }}>
+      {/* Sidebar */}
+      <div className="w-72 shrink-0 bg-white border-r border-slate-200/60 flex flex-col overflow-hidden">
+        <div className="px-5 py-5 border-b border-slate-100 shrink-0">
+          <h3 className="text-sm font-bold text-slate-900" style={{ fontFamily: 'var(--font-manrope)' }}>Your Chats</h3>
+          <p className="text-xs text-slate-400 mt-0.5">{accessibleClubs.length} conversation{accessibleClubs.length !== 1 ? 's' : ''}</p>
         </div>
-        <div className="flex-1 overflow-y-auto py-2">
+        <div className="flex-1 overflow-y-auto py-1.5">
           {accessibleClubs.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
-              <MessageSquare className="w-6 h-6 text-gray-200 mb-2" />
-              <p className="text-xs text-gray-400">No chats yet</p>
+            <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+              <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center mb-3">
+                <MessageSquare className="w-5 h-5 text-slate-400" />
+              </div>
+              <p className="text-xs text-slate-400">No chats yet</p>
             </div>
           ) : (
             accessibleClubs.map((entry) => {
@@ -171,27 +175,29 @@ export default function ClubChatPage({ params }: { params: Promise<{ clubId: str
 
               return (
                 <Link key={entry.id} href={`/chat/${entry.id}`}>
-                  <div className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors ${
-                    isActive ? 'bg-blue-50' : 'hover:bg-gray-50'
+                  <div className={`flex items-center gap-3 px-4 py-3.5 mx-1.5 rounded-xl cursor-pointer transition-all ${
+                    isActive ? 'bg-indigo-50 border border-indigo-100' : 'hover:bg-slate-50 border border-transparent'
                   }`}>
-                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-base shrink-0 ${
-                      isActive ? 'bg-blue-100' : 'bg-gray-100'
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-base shrink-0 border ${
+                      isActive
+                        ? 'bg-indigo-100 border-indigo-200'
+                        : 'bg-gradient-to-br from-slate-100 to-slate-50 border-slate-200/60'
                     }`}>
                       {entry.iconUrl ?? '📌'}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className={`text-sm font-semibold truncate leading-tight ${
-                        isActive ? 'text-blue-700' : 'text-gray-800'
-                      }`}>
+                        isActive ? 'text-indigo-700' : 'text-slate-800'
+                      }`} style={{ fontFamily: 'var(--font-manrope)' }}>
                         {entry.name}
                       </p>
-                      <p className="text-[11px] text-gray-400 truncate mt-0.5">
+                      <p className="text-[11px] text-slate-400 truncate mt-0.5">
                         {lastMessage
                           ? `${lastSender?.name?.split(' ')[0] ?? '?'}: ${lastMessage.content}`
                           : 'No messages yet'}
                       </p>
                     </div>
-                    {isActive && <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />}
+                    {isActive && <div className="w-2 h-2 rounded-full bg-indigo-500 shrink-0" />}
                   </div>
                 </Link>
               )
@@ -200,45 +206,71 @@ export default function ClubChatPage({ params }: { params: Promise<{ clubId: str
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col min-w-0 bg-[#f8f9fa]">
-        <div className="flex items-center gap-3 px-6 py-4 bg-white border-b border-gray-100 shrink-0">
+      {/* Main chat area */}
+      <div className="flex-1 flex flex-col min-w-0 bg-slate-50">
+        {/* Chat header */}
+        <div className="flex items-center gap-4 px-7 py-4 bg-white border-b border-slate-200/60 shrink-0" style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.03)' }}>
           <Link
             href="/chat"
-            className="text-gray-400 hover:text-gray-700 transition-colors p-1 -ml-1 rounded-lg"
+            className="text-slate-400 hover:text-slate-700 transition-colors p-1.5 -ml-1.5 rounded-lg hover:bg-slate-100"
           >
             <ArrowLeft className="w-4 h-4" />
           </Link>
-          <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center text-lg">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-100 to-indigo-50 border border-indigo-200/60 flex items-center justify-center text-lg">
             {club.iconUrl ?? '📌'}
           </div>
           <div className="flex-1 min-w-0">
             <p
-              className="font-bold text-gray-900 leading-tight truncate"
+              className="font-bold text-slate-900 leading-tight truncate text-base"
               style={{ fontFamily: 'var(--font-manrope)' }}
             >
               {club.name}
             </p>
-            <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">
-              {club.memberIds.length} members
-            </p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <Users className="w-3 h-3 text-slate-400" />
+              <p className="text-xs text-slate-400 font-medium">
+                {club.memberIds.length} members
+              </p>
+            </div>
+          </div>
+          {/* Member avatars */}
+          <div className="hidden sm:flex items-center gap-2">
+            <div className="flex -space-x-2">
+              {members.slice(0, 4).map((member) => (
+                <div key={member.id} className="ring-2 ring-white rounded-full">
+                  <Avatar name={member.name} size="sm" />
+                </div>
+              ))}
+              {members.length > 4 && (
+                <div className="w-7 h-7 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-500">
+                  +{members.length - 4}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto px-7 py-6 space-y-6">
           {grouped.length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-gray-400 text-sm">No messages yet. Start the conversation!</p>
+            <div className="text-center py-16">
+              <div className="w-14 h-14 rounded-2xl bg-white border border-slate-200/60 flex items-center justify-center mx-auto mb-4" style={{ boxShadow: '0 4px 24px rgba(15,23,42,0.04)' }}>
+                <MessageSquare className="w-7 h-7 text-slate-300" />
+              </div>
+              <p className="text-slate-500 text-sm font-medium">No messages yet</p>
+              <p className="text-slate-400 text-xs mt-1">Start the conversation!</p>
             </div>
           )}
 
           {grouped.map((group) => (
             <div key={group.date}>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="flex-1 h-px bg-gray-200" />
-                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 shrink-0">
+              <div className="flex items-center gap-4 mb-5">
+                <div className="flex-1 h-px bg-slate-200/60" />
+                <span className="text-[11px] font-semibold text-slate-400 shrink-0 px-3 py-1 rounded-full bg-white border border-slate-200/60"
+                  style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.03)' }}>
                   {group.date}
                 </span>
-                <div className="flex-1 h-px bg-gray-200" />
+                <div className="flex-1 h-px bg-slate-200/60" />
               </div>
 
               <div className="space-y-3">
@@ -261,22 +293,25 @@ export default function ClubChatPage({ params }: { params: Promise<{ clubId: str
                         </div>
                       )}
 
-                      <div className={`max-w-[70%] ${isMe ? 'items-end' : ''}`}>
+                      <div className={`max-w-[65%] ${isMe ? 'items-end' : ''}`}>
                         {!isMe && showAvatar && sender && (
-                          <p className="text-[11px] text-gray-400 font-medium mb-1 ml-1">
+                          <p className="text-[11px] text-slate-400 font-medium mb-1 ml-1">
                             {sender.name}
                           </p>
                         )}
                         <div
-                          className={`rounded-2xl px-4 py-2.5 shadow-sm ${
-                            isMe ? 'bg-[#0058be] text-white rounded-br-md' : 'bg-white text-gray-800 rounded-bl-md'
+                          className={`rounded-2xl px-4 py-2.5 ${
+                            isMe
+                              ? 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-br-md shadow-lg shadow-indigo-500/20'
+                              : 'bg-white text-slate-800 rounded-bl-md border border-slate-200/60'
                           }`}
+                          style={!isMe ? { boxShadow: '0 1px 3px rgba(15,23,42,0.03)' } : {}}
                         >
                           <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
                             {message.content}
                           </p>
                         </div>
-                        <p className={`text-[10px] text-gray-400 mt-1 ${isMe ? 'text-right mr-1' : 'ml-1'}`}>
+                        <p className={`text-[10px] text-slate-400 mt-1 ${isMe ? 'text-right mr-1' : 'ml-1'}`}>
                           {formatTime(message.sentAt)}
                         </p>
                       </div>
@@ -289,38 +324,32 @@ export default function ClubChatPage({ params }: { params: Promise<{ clubId: str
           <div ref={bottomRef} />
         </div>
 
-        <div className="px-6 py-4 bg-white border-t border-gray-100 shrink-0">
+        {/* Input */}
+        <div className="px-7 py-4 bg-white border-t border-slate-200/60 shrink-0">
           {sendError && (
-            <div className="flex items-center justify-between bg-red-50 text-red-600 text-xs rounded-xl px-4 py-2 mb-3">
+            <div className="flex items-center justify-between bg-red-50 text-red-600 text-xs rounded-xl px-4 py-2.5 mb-3 border border-red-100">
               <span>{sendError}</span>
               <button onClick={clearSendError} className="ml-3 text-red-400 hover:text-red-600 font-bold">✕</button>
             </div>
           )}
           <div className="flex items-center gap-3">
-            <div className="hidden sm:flex -space-x-2">
-              {members.slice(0, 3).map((member) => (
-                <div key={member.id} className="ring-2 ring-white rounded-full">
-                  <Avatar name={member.name} size="sm" />
-                </div>
-              ))}
-            </div>
-            <div className="flex-1 flex items-center bg-[#f3f4f5] rounded-2xl px-4 h-12">
+            <div className="flex-1 flex items-center bg-slate-50 border border-slate-200/60 rounded-2xl px-5 h-12 focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-300 transition-all">
               <input
                 ref={inputRef}
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder={`Message ${club.name}...`}
-                className="flex-1 bg-transparent outline-none text-sm placeholder:text-gray-400"
+                className="flex-1 bg-transparent outline-none text-sm placeholder:text-slate-400 text-slate-800"
               />
-              <button
-                onClick={handleSend}
-                disabled={!draft.trim()}
-                className="w-8 h-8 rounded-full bg-[#0058be] disabled:bg-gray-300 text-white flex items-center justify-center transition-colors"
-              >
-                <Send className="w-4 h-4" />
-              </button>
             </div>
+            <button
+              onClick={handleSend}
+              disabled={!draft.trim()}
+              className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 disabled:from-slate-200 disabled:to-slate-300 text-white flex items-center justify-center transition-all shadow-lg shadow-indigo-500/20 disabled:shadow-none hover:scale-105 disabled:hover:scale-100"
+            >
+              <Send className="w-5 h-5" />
+            </button>
           </div>
         </div>
       </div>
