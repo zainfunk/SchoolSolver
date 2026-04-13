@@ -2,19 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth, clerkClient } from '@clerk/nextjs/server'
 import { createServiceClient } from '@/lib/supabase'
 import { rateLimit } from '@/lib/rate-limit'
-import { Role } from '@/types'
+import type { Role } from '@/types'
 
-const ROLE_PRIORITY: Record<Role, number> = {
-  student: 0,
-  advisor: 1,
-  admin: 2,
-  superadmin: 3,
-}
-
-function keepHigherRole(currentRole: Role | undefined, incomingRole: Role) {
-  if (!currentRole) return incomingRole
-  return ROLE_PRIORITY[currentRole] >= ROLE_PRIORITY[incomingRole] ? currentRole : incomingRole
-}
 
 export async function POST(request: NextRequest) {
   const { userId } = await auth()
@@ -100,7 +89,7 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const role = keepHigherRole(existingUser?.role as Role | undefined, incomingRole)
+  const role = incomingRole
   const client = await clerkClient()
   const clerkUser = await client.users.getUser(userId)
   const name = clerkUser.fullName ?? clerkUser.username ?? existingUser?.role ?? 'New User'
