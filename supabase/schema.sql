@@ -388,7 +388,7 @@ create table if not exists schools (
   district text,
   contact_name text not null,
   contact_email text not null,
-  status text not null default 'pending' check (status in ('pending', 'active', 'suspended')),
+  status text not null default 'pending' check (status in ('pending', 'active', 'suspended', 'payment_paused')),
   student_invite_code text unique,
   admin_invite_code text unique,
   advisor_invite_code text unique,
@@ -458,36 +458,6 @@ create table if not exists school_invites (
   used_at timestamptz,
   school_id uuid references schools(id) on delete set null
 );
-
--- ============================================================
--- Row-Level Security (requires Clerk → Supabase JWT bridge)
--- See: https://clerk.com/docs/integrations/databases/supabase
--- Uncomment after configuring the JWT template in Clerk dashboard.
--- ============================================================
-
--- alter table schools enable row level security;
--- alter table users enable row level security;
--- alter table clubs enable row level security;
--- alter table school_elections enable row level security;
-
--- -- Users can only see users in their own school
--- create policy "school_isolation_users" on users
---   for all using (
---     school_id = (select school_id from users where id = auth.uid())
---   );
-
--- -- Users can only see clubs in their own school
--- create policy "school_isolation_clubs" on clubs
---   for all using (
---     school_id = (select school_id from users where id = auth.uid())
---   );
-
--- -- Users can only see elections in their own school
--- create policy "school_isolation_elections" on school_elections
---   for all using (
---     school_id = (select school_id from users where id = auth.uid())
---   );
-
 
 -- ============================================================
 -- Issue Reports
@@ -1183,11 +1153,6 @@ CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, is_r
 -- ============================================================
 -- Subscriptions & Billing (Stripe)
 -- ============================================================
-
--- Allow 'payment_paused' status on schools
-ALTER TABLE schools DROP CONSTRAINT IF EXISTS schools_status_check;
-ALTER TABLE schools ADD CONSTRAINT schools_status_check
-  CHECK (status IN ('pending', 'active', 'suspended', 'payment_paused'));
 
 CREATE TABLE IF NOT EXISTS subscriptions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
