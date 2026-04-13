@@ -230,43 +230,38 @@ export function MockAuthProvider({ children }: { children: ReactNode }) {
 
     async function syncSchoolContext() {
       try {
-        await supabase.from('users').upsert(
-          { id, name, email, role: clerkRole ?? 'student' },
-          { onConflict: 'id', ignoreDuplicates: true }
-        )
-
-        const { data: userData } = await supabase
-          .from('users')
-          .select('role, school_id')
-          .eq('id', id)
-          .maybeSingle()
-
-        const role = (userData?.role as Role | undefined) ?? clerkRole ?? 'student'
-        const schoolId = userData?.school_id ?? undefined
-
-        if (!schoolId) {
-          // If the DB returned a user row with no school_id, that's authoritative — clear cache.
-          // But if the query returned nothing (RLS/timing), keep the cached session.
-          if (userData) {
-            applySchoolState({ role })
-          }
+        const res = await fetch('/api/user/sync')
+        if (!res.ok) {
+          // API call failed — fall back to whatever we have
           return
         }
 
-        const { data: school } = await supabase
-          .from('schools')
-          .select('name, contact_name, contact_email, status, setup_completed_at')
-          .eq('id', schoolId)
-          .maybeSingle()
+        const data = await res.json() as {
+          role: string
+          schoolId?: string | null
+          schoolName?: string | null
+          schoolStatus?: string | null
+          contactName?: string | null
+          contactEmail?: string | null
+          setupCompletedAt?: string | null
+        }
+
+        const role = (data.role as Role) ?? clerkRole ?? 'student'
+        const schoolId = data.schoolId ?? undefined
+
+        if (!schoolId) {
+          applySchoolState({ role })
+          return
+        }
 
         applySchoolState({
           role,
-          schoolId: school ? schoolId : undefined,
-          schoolName: school?.name ?? null,
-          schoolStatus: (school?.status as SchoolStatus | undefined) ?? null,
-          contactName: school?.contact_name ?? null,
-          contactEmail: school?.contact_email ?? null,
-          setupCompletedAt: school?.setup_completed_at ?? null,
+          schoolId,
+          schoolName: data.schoolName ?? null,
+          schoolStatus: (data.schoolStatus as SchoolStatus | undefined) ?? null,
+          contactName: data.contactName ?? null,
+          contactEmail: data.contactEmail ?? null,
+          setupCompletedAt: data.setupCompletedAt ?? null,
         })
       } finally {
         if (!cancelled) {
