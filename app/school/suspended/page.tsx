@@ -1,11 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { Ban, CreditCard, Mail, Loader2 } from 'lucide-react'
+import { Ban, CreditCard, Mail, Loader2, LogOut } from 'lucide-react'
+import { useClerk } from '@clerk/nextjs'
 import { useMockAuth } from '@/lib/mock-auth'
 
 export default function SchoolSuspendedPage() {
   const { schoolName, schoolContactEmail, schoolStatus } = useMockAuth()
+  const { signOut } = useClerk()
   const [portalLoading, setPortalLoading] = useState(false)
 
   const isPaymentPaused = schoolStatus === 'payment_paused'
@@ -82,6 +84,14 @@ export default function SchoolSuspendedPage() {
             </div>
           </div>
         </div>
+
+        <button
+          onClick={() => signOut({ redirectUrl: '/sign-in' })}
+          className="mt-6 inline-flex items-center justify-center gap-2 text-sm text-gray-400 hover:text-gray-700 transition-colors"
+        >
+          <LogOut className="w-4 h-4" />
+          Sign out
+        </button>
       </div>
     </div>
   )
