@@ -14,16 +14,16 @@ import Avatar from '@/components/Avatar'
 import { Input } from '@/components/ui/input'
 import AttendanceCalendar from '@/components/profile/AttendanceCalendar'
 import {
-  Pencil, Check, X, Shield, Plus, Trash2,
+  Pencil, Check, X, Plus, Trash2,
   ExternalLink, EyeOff, Users, Mail, BadgeCheck,
   Trophy, Star, Flame, BookOpen, Award, Zap, AlertCircle,
 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/Skeleton'
 
 const ROLE_BADGE: Record<string, string> = {
-  admin:   'bg-red-100 text-red-700 border-red-200',
-  advisor: 'bg-blue-100 text-blue-700 border-blue-200',
-  student: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  admin:   'bg-red-50 text-red-600 border-red-100',
+  advisor: 'bg-indigo-50 text-indigo-600 border-indigo-100',
+  student: 'bg-emerald-50 text-emerald-600 border-emerald-100',
 }
 
 const ROLE_LABEL: Record<string, string> = {
@@ -32,9 +32,8 @@ const ROLE_LABEL: Record<string, string> = {
 
 type Tab = 'overview' | 'clubs' | 'attendance' | 'achievements'
 
-// Derived achievements based on real user data
 function computeAchievements(
-  memberClubs: import('@/types').Club[],
+  memberClubs: Club[],
   allRecords: AttendanceRecord[],
 ) {
   const achievements: { icon: React.ReactNode; title: string; desc: string; earned: boolean }[] = []
@@ -83,11 +82,12 @@ function computeAchievements(
 
 export default function ProfilePage() {
   const { currentUser } = useMockAuth()
+  const profileUser = currentUser
+  const canEdit = true
 
-  const isAdmin = currentUser.role === 'admin'
-
-  // Admins can browse other users in the current school
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
+  const [profile, setProfileState] = useState({ bio: '', skills: [] as string[], interests: [] as string[], socials: [] as PersonalSocialLink[] })
+  const [profileLoading, setProfileLoading] = useState(true)
+  const [profileError, setProfileError] = useState<string | null>(null)
   const [schoolUsers, setSchoolUsers] = useState<User[]>([])
 
   useEffect(() => {
@@ -95,23 +95,15 @@ export default function ProfilePage() {
     fetchSchoolUsers(currentUser.schoolId).then(setSchoolUsers)
   }, [currentUser.schoolId])
 
-  const profileUser = isAdmin && selectedUserId
-    ? (schoolUsers.find((u) => u.id === selectedUserId) ?? currentUser)
-    : currentUser
-
-  const canEdit = isAdmin || profileUser.id === currentUser.id
-
-  const [profile, setProfileState] = useState({ bio: '', skills: [] as string[], interests: [] as string[], socials: [] as PersonalSocialLink[] })
-  const [profileLoading, setProfileLoading] = useState(true)
-  const [profileError, setProfileError] = useState<string | null>(null)
   useEffect(() => {
     setProfileLoading(true)
     setProfileError(null)
-    Promise.all([
-      getProfile(profileUser.id).then(setProfileState),
-    ]).catch((err) => {
-      setProfileError(err instanceof Error ? err.message : 'Failed to load profile')
-    }).finally(() => setProfileLoading(false))
+    getProfile(profileUser.id)
+      .then(setProfileState)
+      .catch((err) => {
+        setProfileError(err instanceof Error ? err.message : 'Failed to load profile')
+      })
+      .finally(() => setProfileLoading(false))
   }, [profileUser.id])
 
   async function saveProfile(partial: Parameters<typeof setProfile>[1]) {
@@ -213,53 +205,49 @@ export default function ProfilePage() {
   const [tab, setTab] = useState<Tab>('overview')
 
   const tabs: { key: Tab; label: string }[] = [
-    { key: 'overview', label: 'OVERVIEW' },
-    { key: 'clubs', label: profileUser.role === 'advisor' ? 'CLUBS ADVISED' : 'MY CLUBS' },
-    ...(profileUser.role === 'student' ? [{ key: 'attendance' as Tab, label: 'ATTENDANCE' }] : []),
-    { key: 'achievements', label: 'ACHIEVEMENTS' },
+    { key: 'overview', label: 'Overview' },
+    { key: 'clubs', label: profileUser.role === 'advisor' ? 'Clubs Advised' : 'My Clubs' },
+    ...(profileUser.role === 'student' ? [{ key: 'attendance' as Tab, label: 'Attendance' }] : []),
+    { key: 'achievements', label: 'Achievements' },
   ]
 
-  // Guard after all hooks — currentUser.id is empty during the loading state
   if (!currentUser.id) return null
 
   if (profileLoading) return (
-    <div className="max-w-2xl mx-auto space-y-4">
-      <div className="rounded-2xl overflow-hidden bg-white p-6" style={{ boxShadow: '0 8px 24px rgba(0,0,0,0.05)' }}>
-        <Skeleton className="h-2 w-full mb-6" />
-        <div className="flex items-center gap-4 mb-5">
-          <Skeleton className="w-16 h-16 rounded-2xl" />
-          <div className="flex-1 space-y-2">
-            <Skeleton className="h-6 w-40" />
-            <Skeleton className="h-3 w-24" />
+    <div className="space-y-6">
+      <div className="rounded-2xl bg-white border border-slate-200/60 p-8" style={{ boxShadow: '0 4px 24px rgba(15,23,42,0.04)' }}>
+        <div className="flex items-center gap-6">
+          <Skeleton className="w-24 h-24 rounded-2xl" />
+          <div className="flex-1 space-y-3">
+            <Skeleton className="h-7 w-48" />
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-4 w-56" />
           </div>
         </div>
-        <div className="grid grid-cols-4 gap-3 mb-5">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="rounded-xl p-3" style={{ background: '#f8f9fa' }}>
-              <Skeleton className="h-5 w-8 mx-auto mb-1" />
-              <Skeleton className="h-2 w-12 mx-auto" />
-            </div>
-          ))}
-        </div>
-        <Skeleton className="h-3 w-10 mb-2" />
-        <Skeleton className="h-16 w-full rounded-lg" />
+      </div>
+      <div className="grid grid-cols-4 gap-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="rounded-2xl bg-white border border-slate-200/60 p-5" style={{ boxShadow: '0 4px 24px rgba(15,23,42,0.04)' }}>
+            <Skeleton className="h-8 w-12 mb-2" />
+            <Skeleton className="h-3 w-16" />
+          </div>
+        ))}
       </div>
     </div>
   )
 
-  const roleAccent: Record<string, string> = {
-    admin:   '#EF4444',
-    advisor: '#3B82F6',
-    student: '#10B981',
+  const roleGradient: Record<string, string> = {
+    admin:   'from-red-500 via-rose-500 to-orange-400',
+    advisor: 'from-indigo-500 via-indigo-600 to-emerald-500',
+    student: 'from-emerald-500 via-teal-500 to-cyan-400',
   }
-  const accent = roleAccent[profileUser.role]
 
   return (
-    <div className="max-w-2xl mx-auto space-y-0">
+    <div className="space-y-6" style={{ fontFamily: 'var(--font-inter)' }}>
 
       {/* Error banner */}
       {profileError && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 px-5 py-4 flex items-start gap-3 mb-4">
+        <div className="rounded-2xl border border-red-200 bg-red-50 px-5 py-4 flex items-start gap-3">
           <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
           <div className="flex-1">
             <p className="text-sm font-medium text-red-800">Failed to load profile</p>
@@ -269,205 +257,180 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* Admin user selector */}
-      {isAdmin && (
-        <div className="flex items-center gap-3 px-4 py-3 rounded-2xl mb-5"
-          style={{ background: 'rgba(239,68,68,0.06)' }}>
-          <Shield className="w-4 h-4 text-red-500 shrink-0" />
-          <span className="text-sm font-medium text-red-700 mr-1">Viewing:</span>
-          <select
-            value={selectedUserId ?? ''}
-            onChange={(e) => {
-              setSelectedUserId(e.target.value)
-              setEditingEmail(false)
-              setEditingSocials(false)
-              setTab('overview')
-            }}
-            className="text-sm rounded-lg px-2 py-1 bg-white text-gray-700 cursor-pointer flex-1 border-0"
-          >
-            {schoolUsers.map((u) => (
-              <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
-            ))}
-          </select>
+      {/* ── Hero Banner ── */}
+      <div className="rounded-2xl overflow-hidden bg-white border border-slate-200/60" style={{ boxShadow: '0 4px 24px rgba(15,23,42,0.04)' }}>
+        {/* Gradient banner */}
+        <div className={`h-32 bg-gradient-to-r ${roleGradient[profileUser.role]} relative`}>
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.2),transparent_70%)]" />
         </div>
-      )}
 
-      {/* ── Hero card ── */}
-      <div className="rounded-2xl overflow-hidden mb-0" style={{ background: '#ffffff', boxShadow: '0 8px 24px rgba(0,0,0,0.05)' }}>
-
-        {/* Top accent strip — thin, not a full banner */}
-        <div className="h-2 w-full" style={{ background: `linear-gradient(90deg, ${accent} 0%, ${accent}66 100%)` }} />
-
-        {/* Content */}
-        <div className="px-6 pt-6 pb-6">
-
-          {/* Avatar + name row */}
-          <div className="flex items-start justify-between gap-4 mb-5">
-            <div className="flex items-center gap-4">
-              <div className="rounded-2xl p-1 shrink-0" style={{ background: `${accent}14`, boxShadow: `0 4px 16px ${accent}22` }}>
+        {/* Profile content overlapping banner */}
+        <div className="px-8 pb-8 -mt-14 relative">
+          <div className="flex flex-col sm:flex-row items-start gap-6">
+            {/* Avatar */}
+            <div className="rounded-2xl p-1 bg-white shadow-lg shadow-slate-900/10 shrink-0">
+              <div className="w-24 h-24 rounded-xl overflow-hidden">
                 <Avatar name={profileUser.name} size="lg" />
               </div>
-              <div>
-                {/* Name */}
-                <div className="flex items-center gap-2 flex-wrap mb-1">
-                  {canEdit ? (
-                    <Input
-                      value={nameInput}
-                      onChange={(e) => setNameInput(e.target.value)}
-                      onBlur={saveName}
-                      onKeyDown={(e) => e.key === 'Enter' && saveName()}
-                      className="h-8 text-xl font-bold max-w-xs"
-                      style={{ fontFamily: 'var(--font-manrope)', letterSpacing: '-0.02em' }}
-                    />
-                  ) : (
-                    <h1 className="text-2xl font-bold text-[#191c1d]"
-                      style={{ fontFamily: 'var(--font-manrope)', letterSpacing: '-0.02em' }}>
-                      {profileUser.name}
-                    </h1>
+            </div>
+
+            {/* Info */}
+            <div className="flex-1 min-w-0 pt-16 sm:pt-2">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2.5 mb-1">
+                    {canEdit ? (
+                      <Input
+                        value={nameInput}
+                        onChange={(e) => setNameInput(e.target.value)}
+                        onBlur={saveName}
+                        onKeyDown={(e) => e.key === 'Enter' && saveName()}
+                        className="h-9 text-2xl font-extrabold tracking-tight max-w-xs border-none shadow-none px-0 focus-visible:ring-0"
+                        style={{ fontFamily: 'var(--font-manrope)' }}
+                      />
+                    ) : (
+                      <h1 className="text-2xl font-extrabold tracking-tight text-slate-900"
+                        style={{ fontFamily: 'var(--font-manrope)' }}>
+                        {profileUser.name}
+                      </h1>
+                    )}
+                    <BadgeCheck className="w-5 h-5 text-indigo-500 shrink-0" />
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${ROLE_BADGE[profileUser.role]}`}>
+                      {ROLE_LABEL[profileUser.role]}
+                    </span>
+                    <span className="text-sm text-slate-500">{profileUser.email}</span>
+                    {canEdit && !editingEmail && (
+                      <button onClick={() => { setEmailInput(profileUser.email); setEditingEmail(true) }}
+                        className="text-slate-400 hover:text-slate-600 transition-colors">
+                        <Pencil className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                  {editingEmail && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <Input value={emailInput} onChange={(e) => setEmailInput(e.target.value)}
+                        className="h-7 text-xs max-w-xs" autoFocus onKeyDown={(e) => e.key === 'Enter' && saveEmail()} />
+                      <button onClick={saveEmail} className="text-emerald-600"><Check className="w-3.5 h-3.5" /></button>
+                      <button onClick={() => setEditingEmail(false)} className="text-slate-400"><X className="w-3.5 h-3.5" /></button>
+                    </div>
                   )}
-                  <BadgeCheck className="w-5 h-5 shrink-0" style={{ color: accent }} />
                 </div>
-                {/* Role */}
-                <div className="flex items-center gap-2 mt-1">
-                  <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border ${ROLE_BADGE[profileUser.role]}`}>
-                    {profileUser.role}
-                  </span>
-                  <span className="text-sm text-[#727785]">{ROLE_LABEL[profileUser.role]}</span>
-                </div>
+
+                <a href={`mailto:${profileUser.email}`}
+                  className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors shrink-0">
+                  <Mail className="w-3.5 h-3.5" />
+                  Message
+                </a>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
 
-            {/* Action buttons */}
-            <div className="flex items-center gap-2 shrink-0">
-              <a href={`mailto:${profileUser.email}`}
-                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl text-[#191c1d] transition-all"
-                style={{ background: '#f3f4f5' }}>
-                <Mail style={{ width: '0.75rem', height: '0.75rem' }} />
-                Message
-              </a>
+      {/* ── Stats Row ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {[
+          { value: displayClubs.length, label: 'Clubs', icon: <Users className="w-4 h-4" />, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+          ...(profileUser.role === 'student' ? [
+            { value: `${attendancePct}%`, label: 'Attendance', icon: <Flame className="w-4 h-4" />, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+            { value: earnedCount, label: 'Achievements', icon: <Award className="w-4 h-4" />, color: 'text-amber-600', bg: 'bg-amber-50' },
+          ] : []),
+          { value: memberClubs.filter((c) => c.leadershipPositions.some((lp) => lp.userId === profileUser.id)).length, label: 'Leadership', icon: <Star className="w-4 h-4" />, color: 'text-violet-600', bg: 'bg-violet-50' },
+        ].map(({ value, label, icon, color, bg }) => (
+          <div key={label} className="rounded-2xl bg-white border border-slate-200/60 p-5 flex items-center gap-4"
+            style={{ boxShadow: '0 4px 24px rgba(15,23,42,0.04)' }}>
+            <div className={`w-10 h-10 rounded-xl ${bg} ${color} flex items-center justify-center shrink-0`}>
+              {icon}
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-slate-900" style={{ fontFamily: 'var(--font-manrope)' }}>{value}</p>
+              <p className="text-xs font-medium text-slate-500">{label}</p>
             </div>
           </div>
+        ))}
+      </div>
 
-          {/* Stats row */}
-          <div className="grid grid-cols-4 gap-3 mb-5">
-            {[
-              { value: displayClubs.length, label: 'Clubs' },
-              ...(profileUser.role === 'student' ? [
-                { value: `${attendancePct}%`, label: 'Attendance' },
-                { value: earnedCount, label: 'Achievements' },
-              ] : []),
-              { value: memberClubs.filter((c) => c.leadershipPositions.some((lp) => lp.userId === profileUser.id)).length, label: 'Leadership' },
-            ].map(({ value, label }) => (
-              <div key={label} className="rounded-xl p-3 text-center" style={{ background: '#f8f9fa' }}>
-                <p className="text-xl font-bold text-[#191c1d]" style={{ fontFamily: 'var(--font-manrope)' }}>{value}</p>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-[#727785] mt-0.5">{label}</p>
-              </div>
-            ))}
-          </div>
+      {/* ── Two-column layout ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
+        {/* Left sidebar — Bio & Socials */}
+        <div className="space-y-6">
           {/* Bio */}
-          <div className="mb-4">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-[#727785] block mb-1.5">Bio</label>
+          <div className="rounded-2xl bg-white border border-slate-200/60 p-6" style={{ boxShadow: '0 4px 24px rgba(15,23,42,0.04)' }}>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">About</h3>
             {canEdit ? (
               <textarea
                 value={bioInput}
                 onChange={(e) => setBioInput(e.target.value)}
                 onBlur={saveBio}
-                rows={3}
-                placeholder="Write a short bio…"
-                className="w-full text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#0058be] resize-none"
-                style={{ background: '#f3f4f5', border: 'none' }}
+                rows={4}
+                placeholder="Write a short bio..."
+                className="w-full text-sm text-slate-700 rounded-xl px-4 py-3 bg-slate-50 border border-slate-200/60 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 resize-none transition-all"
               />
             ) : (
-              <p className="text-sm text-[#424754] leading-relaxed">
-                {profile.bio || <span className="text-[#a0a3ad] italic">No bio yet.</span>}
+              <p className="text-sm text-slate-600 leading-relaxed">
+                {profile.bio || <span className="text-slate-400 italic">No bio yet.</span>}
               </p>
             )}
           </div>
 
-          {/* Email */}
-          <div className="mb-4">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-[#727785] block mb-1.5">Contact</label>
-            <div className="flex items-center gap-2">
-              {editingEmail ? (
-                <>
-                  <Input value={emailInput} onChange={(e) => setEmailInput(e.target.value)}
-                    className="h-7 text-xs max-w-xs" autoFocus onKeyDown={(e) => e.key === 'Enter' && saveEmail()} />
-                  <button onClick={saveEmail} className="text-emerald-600"><Check className="w-3.5 h-3.5" /></button>
-                  <button onClick={() => setEditingEmail(false)} className="text-[#727785]"><X className="w-3.5 h-3.5" /></button>
-                </>
-              ) : (
-                <>
-                  <span className="text-sm text-[#424754]">{profileUser.email}</span>
-                  {canEdit && (
-                    <button onClick={() => { setEmailInput(profileUser.email); setEditingEmail(true) }}
-                      className="text-[#727785] hover:text-[#191c1d]">
-                      <Pencil className="w-3 h-3" />
-                    </button>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Socials — hidden for students when admin has disabled student socials */}
-          {(isAdmin || profileUser.role !== 'student' || getAdminSettings().studentSocialsEnabled) && (
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-[#727785]">Socials</label>
+          {/* Socials */}
+          {(currentUser.role === 'admin' || profileUser.role !== 'student' || getAdminSettings().studentSocialsEnabled) && (
+          <div className="rounded-2xl bg-white border border-slate-200/60 p-6" style={{ boxShadow: '0 4px 24px rgba(15,23,42,0.04)' }}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Links</h3>
               {canEdit && !editingSocials && (
-                <button onClick={startEditSocials} className="text-[#727785] hover:text-[#191c1d]">
+                <button onClick={startEditSocials} className="text-slate-400 hover:text-slate-600 transition-colors">
                   <Pencil className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
 
             {editingSocials ? (
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 {socialsInput.map((s, idx) => (
                   <div key={s.id} className="flex items-center gap-2">
                     <select value={s.label}
                       onChange={(e) => setSocialsInput((prev) => prev.map((x, i) => i === idx ? { ...x, label: e.target.value } : x))}
-                      className="text-xs rounded-lg px-2 py-1 w-32" style={{ background: '#f3f4f5', border: 'none' }}>
+                      className="text-xs rounded-lg px-2.5 py-1.5 bg-slate-50 border border-slate-200/60 w-28">
                       {SOCIAL_PLATFORMS.map((p) => <option key={p}>{p}</option>)}
                     </select>
                     <Input value={s.url}
                       onChange={(e) => setSocialsInput((prev) => prev.map((x, i) => i === idx ? { ...x, url: e.target.value } : x))}
-                      placeholder="https://…" className="h-7 text-xs flex-1" />
+                      placeholder="https://..." className="h-7 text-xs flex-1" />
                     <button onClick={() => setSocialsInput((prev) => prev.filter((_, i) => i !== idx))}
-                      className="text-red-400 hover:text-red-600">
+                      className="text-red-400 hover:text-red-600 transition-colors">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 ))}
-                <div className="flex items-center gap-2 pt-1" style={{ borderTop: '1px solid #f3f4f5' }}>
+                <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
                   <select value={newSocialLabel} onChange={(e) => setNewSocialLabel(e.target.value)}
-                    className="text-xs rounded-lg px-2 py-1 w-32" style={{ background: '#f3f4f5', border: 'none' }}>
+                    className="text-xs rounded-lg px-2.5 py-1.5 bg-slate-50 border border-slate-200/60 w-28">
                     {SOCIAL_PLATFORMS.map((p) => <option key={p}>{p}</option>)}
                   </select>
                   <Input value={newSocialUrl} onChange={(e) => setNewSocialUrl(e.target.value)}
-                    placeholder="https://…" className="h-7 text-xs flex-1"
+                    placeholder="https://..." className="h-7 text-xs flex-1"
                     onKeyDown={(e) => e.key === 'Enter' && addSocial()} />
-                  <button onClick={addSocial} className="text-[#0058be] hover:text-[#004395]">
+                  <button onClick={addSocial} className="text-indigo-500 hover:text-indigo-700 transition-colors">
                     <Plus className="w-4 h-4" />
                   </button>
                 </div>
-                <div className="flex gap-3 pt-1">
-                  <button onClick={saveSocials} className="text-xs text-emerald-700 font-semibold hover:underline">Save</button>
-                  <button onClick={() => setEditingSocials(false)} className="text-xs text-[#727785]">Cancel</button>
+                <div className="flex gap-3 pt-2">
+                  <button onClick={saveSocials} className="text-xs font-semibold text-emerald-600 hover:underline">Save</button>
+                  <button onClick={() => setEditingSocials(false)} className="text-xs text-slate-400 hover:text-slate-600">Cancel</button>
                 </div>
               </div>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {profile.socials.length === 0 ? (
-                  <p className="text-sm text-[#a0a3ad] italic">
-                    No socials linked.{canEdit ? ' Click "Edit Profile" to add.' : ''}
-                  </p>
+                  <p className="text-sm text-slate-400 italic">No links added yet.</p>
                 ) : (
                   profile.socials.map((s) => (
                     <a key={s.id} href={s.url} target="_blank" rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full font-medium text-[#424754] hover:bg-[#edeeef] transition-colors"
-                      style={{ background: '#f3f4f5' }}>
+                      className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-medium text-slate-600 bg-slate-50 border border-slate-200/60 hover:bg-slate-100 hover:border-slate-300 transition-all">
                       <ExternalLink className="w-3 h-3" />
                       {s.label}
                     </a>
@@ -477,242 +440,241 @@ export default function ProfilePage() {
             )}
           </div>
           )}
+
+          {/* Activity Snapshot (students only, sidebar) */}
+          {profileUser.role === 'student' && (
+            <div className="rounded-2xl bg-white border border-slate-200/60 p-6" style={{ boxShadow: '0 4px 24px rgba(15,23,42,0.04)' }}>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-4">Activity Snapshot</h3>
+              <div className="space-y-3">
+                {[
+                  {
+                    label: 'Engagement',
+                    value: attendancePct >= 80 ? 'High' : attendancePct >= 50 ? 'Medium' : 'Low',
+                    color: attendancePct >= 80 ? 'text-emerald-600' : attendancePct >= 50 ? 'text-amber-600' : 'text-red-500',
+                  },
+                  {
+                    label: 'Standing',
+                    value: earnedCount >= 4 ? 'Elite' : earnedCount >= 2 ? 'Active' : 'New',
+                    color: earnedCount >= 4 ? 'text-indigo-600' : earnedCount >= 2 ? 'text-amber-600' : 'text-slate-500',
+                  },
+                  {
+                    label: 'Meetings',
+                    value: `${presentCount} / ${totalMeetings}`,
+                    color: 'text-slate-900',
+                  },
+                ].map(({ label, value, color }) => (
+                  <div key={label} className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
+                    <span className="text-sm text-slate-500">{label}</span>
+                    <span className={`text-sm font-bold ${color}`} style={{ fontFamily: 'var(--font-manrope)' }}>{value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-      </div>
 
-      {/* ── Tab bar ── */}
-      <div className="flex" style={{ borderBottom: '1px solid rgba(194,198,214,0.3)' }}>
-        {tabs.map((t) => (
-          <button key={t.key} onClick={() => setTab(t.key)}
-            className={`px-5 py-3 text-[11px] font-bold tracking-widest transition-all border-b-2 -mb-px ${
-              tab === t.key
-                ? 'border-[#0058be] text-[#0058be]'
-                : 'border-transparent text-[#727785] hover:text-[#191c1d]'
-            }`}>
-            {t.label}
-          </button>
-        ))}
-      </div>
+        {/* Right content — Tabs */}
+        <div className="lg:col-span-2">
+          {/* Tab bar */}
+          <div className="flex gap-1 p-1 rounded-xl bg-slate-100 mb-6">
+            {tabs.map((t) => (
+              <button key={t.key} onClick={() => setTab(t.key)}
+                className={`flex-1 px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
+                  tab === t.key
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}>
+                {t.label}
+              </button>
+            ))}
+          </div>
 
-      <div className="pt-5 space-y-4">
-
-        {/* ── Tab: Overview ── */}
-        {tab === 'overview' && (
-          <>
-            {/* Active memberships */}
-            {displayClubs.length > 0 && (
-              <div className="rounded-2xl p-5"
-                style={{ background: '#ffffff', boxShadow: '0 8px 24px rgba(0,0,0,0.04)' }}>
-                <h3 className="text-[10px] font-bold uppercase tracking-widest text-[#727785] mb-4">
-                  Active Memberships
-                </h3>
-                <div className="space-y-3">
-                  {displayClubs.map((club) => {
-                    const advisor = resolveUser(club.advisorId)
-                    const position = club.leadershipPositions.find((lp) => lp.userId === profileUser.id)
-                    return (
-                      <Link key={club.id} href={`/clubs/${club.id}`}>
-                        <div className="flex items-center gap-4 p-3 rounded-xl cursor-pointer transition-all hover:bg-[#f8f9fa]">
-                          <div className="w-11 h-11 rounded-full flex items-center justify-center text-xl shrink-0"
-                            style={{ background: '#f3f4f5' }}>
-                            {club.iconUrl ?? '📌'}
+          {/* ── Tab: Overview ── */}
+          {tab === 'overview' && (
+            <div className="space-y-4">
+              {displayClubs.length > 0 && (
+                <div className="rounded-2xl bg-white border border-slate-200/60 p-6" style={{ boxShadow: '0 4px 24px rgba(15,23,42,0.04)' }}>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-4">
+                    Active Memberships
+                  </h3>
+                  <div className="space-y-2">
+                    {displayClubs.map((club) => {
+                      const advisor = resolveUser(club.advisorId)
+                      const position = club.leadershipPositions.find((lp) => lp.userId === profileUser.id)
+                      return (
+                        <Link key={club.id} href={`/clubs/${club.id}`}>
+                          <div className="flex items-center gap-4 p-3.5 rounded-xl cursor-pointer transition-all hover:bg-slate-50 border border-transparent hover:border-slate-200/60">
+                            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-slate-100 to-slate-50 border border-slate-200/60 flex items-center justify-center text-lg shrink-0">
+                              {club.iconUrl ?? '📌'}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-bold text-slate-900 text-sm leading-tight"
+                                style={{ fontFamily: 'var(--font-manrope)' }}>
+                                {club.name}
+                              </p>
+                              <p className="text-xs text-slate-500 mt-0.5">
+                                Advisor: {advisor?.name ?? '—'}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              {position && (
+                                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-100">
+                                  {position.title}
+                                </span>
+                              )}
+                              <div className="flex items-center gap-1 text-xs text-slate-400">
+                                <Users className="w-3.5 h-3.5" />
+                                {club.memberIds.length}
+                              </div>
+                            </div>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-bold text-[#191c1d] text-sm leading-tight"
-                              style={{ fontFamily: 'var(--font-manrope, sans-serif)' }}>
-                              {club.name}
-                            </p>
-                            <p className="text-xs text-[#727785]">
-                              Advisor: {advisor?.name ?? '—'}
-                            </p>
-                          </div>
+                        </Link>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {displayClubs.length === 0 && (
+                <div className="rounded-2xl bg-white border border-slate-200/60 p-12 text-center" style={{ boxShadow: '0 4px 24px rgba(15,23,42,0.04)' }}>
+                  <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
+                    <Users className="w-6 h-6 text-slate-400" />
+                  </div>
+                  <p className="text-sm font-medium text-slate-600">No clubs yet</p>
+                  <p className="text-xs text-slate-400 mt-1">Join a club to see your activity here.</p>
+                  <Link href="/clubs" className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-700 mt-3 transition-colors">
+                    Browse clubs
+                  </Link>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Tab: My Clubs ── */}
+          {tab === 'clubs' && (
+            <div className="space-y-3">
+              {displayClubs.length === 0 ? (
+                <div className="rounded-2xl bg-white border border-slate-200/60 p-12 text-center" style={{ boxShadow: '0 4px 24px rgba(15,23,42,0.04)' }}>
+                  <p className="text-sm text-slate-500 italic">
+                    {profileUser.role === 'advisor' ? 'Not advising any clubs.' : 'Not a member of any clubs yet.'}
+                  </p>
+                </div>
+              ) : (
+                displayClubs.map((club) => {
+                  const advisor = resolveUser(club.advisorId)
+                  const position = club.leadershipPositions.find((lp) => lp.userId === profileUser.id)
+                  return (
+                    <Link key={club.id} href={`/clubs/${club.id}`}>
+                      <div className="flex items-center gap-4 p-5 rounded-2xl cursor-pointer transition-all duration-200 bg-white border border-slate-200/60 hover:border-slate-300 hover:shadow-md"
+                        style={{ boxShadow: '0 4px 24px rgba(15,23,42,0.04)' }}>
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-slate-100 to-slate-50 border border-slate-200/60 flex items-center justify-center text-xl shrink-0">
+                          {club.iconUrl ?? '📌'}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-slate-900 leading-tight"
+                            style={{ fontFamily: 'var(--font-manrope)' }}>
+                            {club.name}
+                          </p>
+                          <p className="text-xs text-slate-500 mt-0.5">Advisor: {advisor?.name ?? '—'}</p>
                           {position && (
-                            <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full shrink-0"
-                              style={{ background: 'rgba(146,71,0,0.1)', color: '#924700' }}>
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-100 mt-1.5 inline-block">
                               {position.title}
                             </span>
                           )}
                         </div>
-                      </Link>
-                    )
-                  })}
+                        <div className="flex items-center gap-1 text-xs text-slate-400 shrink-0">
+                          <Users className="w-3.5 h-3.5" />
+                          {club.memberIds.length}
+                        </div>
+                      </div>
+                    </Link>
+                  )
+                })
+              )}
+            </div>
+          )}
+
+          {/* ── Tab: Attendance ── */}
+          {tab === 'attendance' && profileUser.role === 'student' && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-3 gap-4">
+                {[
+                  { value: `${attendancePct}%`, label: 'Rate', icon: <Flame className="w-4 h-4" />, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+                  { value: `${presentCount}`, label: 'Attended', icon: <Check className="w-4 h-4" />, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+                  { value: `${totalMeetings}`, label: 'Total', icon: <BookOpen className="w-4 h-4" />, color: 'text-amber-600', bg: 'bg-amber-50' },
+                ].map(({ value, label, icon, color, bg }) => (
+                  <div key={label} className="rounded-2xl bg-white border border-slate-200/60 p-5 text-center"
+                    style={{ boxShadow: '0 4px 24px rgba(15,23,42,0.04)' }}>
+                    <div className={`w-8 h-8 rounded-lg ${bg} ${color} flex items-center justify-center mx-auto mb-2`}>{icon}</div>
+                    <p className="text-2xl font-bold text-slate-900" style={{ fontFamily: 'var(--font-manrope)' }}>{value}</p>
+                    <p className="text-xs font-medium text-slate-500 mt-0.5">{label}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-2 text-xs text-amber-700 rounded-xl px-4 py-3 bg-amber-50 border border-amber-100">
+                <EyeOff className="w-3.5 h-3.5 shrink-0" />
+                Attendance is private — only visible to you and your club advisors.
+              </div>
+
+              {memberClubs.length === 0 ? (
+                <p className="text-sm text-slate-500 italic py-4">No club memberships to show attendance for.</p>
+              ) : (
+                memberClubs.map((club) => (
+                  <AttendanceCalendar key={club.id} clubName={club.name} records={getClubAttendance(club.id)} />
+                ))
+              )}
+            </div>
+          )}
+
+          {/* ── Tab: Achievements ── */}
+          {tab === 'achievements' && (
+            <div className="space-y-4">
+              <div className="rounded-2xl bg-white border border-slate-200/60 p-6 flex items-center gap-5"
+                style={{ boxShadow: '0 4px 24px rgba(15,23,42,0.04)' }}>
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shrink-0 shadow-lg shadow-indigo-500/20">
+                  <Award className="w-7 h-7 text-white" />
+                </div>
+                <div>
+                  <p className="text-3xl font-bold text-slate-900" style={{ fontFamily: 'var(--font-manrope)' }}>
+                    {earnedCount} <span className="text-lg text-slate-400 font-medium">/ {achievements.length}</span>
+                  </p>
+                  <p className="text-sm text-slate-500">Achievements earned</p>
                 </div>
               </div>
-            )}
 
-            {/* Activity Snapshot */}
-            {profileUser.role === 'student' && (
-              <div className="rounded-2xl p-5"
-                style={{ background: '#ffffff', boxShadow: '0 8px 24px rgba(0,0,0,0.04)' }}>
-                <h3 className="text-[10px] font-bold uppercase tracking-widest text-[#727785] mb-4">
-                  Activity Snapshot
-                </h3>
-                <div className="grid grid-cols-3 gap-3">
-                  {[
-                    {
-                      label: 'Engagement',
-                      value: attendancePct >= 80 ? 'High' : attendancePct >= 50 ? 'Medium' : 'Low',
-                      color: attendancePct >= 80 ? '#10B981' : attendancePct >= 50 ? '#F59E0B' : '#EF4444',
-                    },
-                    {
-                      label: 'Standing',
-                      value: earnedCount >= 4 ? 'Elite' : earnedCount >= 2 ? 'Active' : 'New',
-                      color: earnedCount >= 4 ? '#0058be' : earnedCount >= 2 ? '#924700' : '#727785',
-                    },
-                    {
-                      label: 'Meetings',
-                      value: `${presentCount}/${totalMeetings}`,
-                      color: '#191c1d',
-                    },
-                  ].map(({ label, value, color }) => (
-                    <div key={label} className="rounded-xl p-3 text-center" style={{ background: '#f8f9fa' }}>
-                      <p className="text-base font-bold" style={{ color, fontFamily: 'var(--font-manrope, sans-serif)' }}>
-                        {value}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {achievements.map((a) => (
+                  <div key={a.title}
+                    className={`rounded-2xl p-5 flex items-start gap-4 transition-all border ${
+                      a.earned
+                        ? 'bg-white border-slate-200/60'
+                        : 'bg-slate-50 border-slate-100 opacity-50'
+                    }`}
+                    style={a.earned ? { boxShadow: '0 4px 24px rgba(15,23,42,0.04)' } : {}}>
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                      a.earned ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-100 text-slate-400'
+                    }`}>
+                      {a.icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-slate-900 leading-tight"
+                        style={{ fontFamily: 'var(--font-manrope)' }}>
+                        {a.title}
                       </p>
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-[#727785] mt-0.5">{label}</p>
+                      <p className="text-xs text-slate-500 mt-0.5 leading-tight">{a.desc}</p>
+                      {a.earned && (
+                        <span className="inline-flex items-center gap-0.5 text-[10px] font-bold uppercase tracking-wider mt-1.5 text-emerald-600">
+                          <Check className="w-3 h-3" /> Earned
+                        </span>
+                      )}
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </>
-        )}
-
-        {/* ── Tab: My Clubs ── */}
-        {tab === 'clubs' && (
-          <div className="space-y-3">
-            {displayClubs.length === 0 ? (
-              <p className="text-sm text-[#727785] italic py-6">
-                {profileUser.role === 'advisor' ? 'Not advising any clubs.' : 'Not a member of any clubs yet.'}
-              </p>
-            ) : (
-              displayClubs.map((club) => {
-                const advisor = resolveUser(club.advisorId)
-                const position = club.leadershipPositions.find((lp) => lp.userId === profileUser.id)
-                return (
-                  <Link key={club.id} href={`/clubs/${club.id}`}>
-                    <div className="flex items-center gap-4 p-4 rounded-2xl cursor-pointer transition-all duration-200 hover:scale-[1.01]"
-                      style={{ background: '#ffffff', boxShadow: '0 8px 24px rgba(0,0,0,0.04)' }}>
-                      <div className="w-12 h-12 rounded-full flex items-center justify-center text-xl shrink-0"
-                        style={{ background: '#f3f4f5' }}>
-                        {club.iconUrl ?? '📌'}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-[#191c1d] leading-tight"
-                          style={{ fontFamily: 'var(--font-manrope, sans-serif)' }}>
-                          {club.name}
-                        </p>
-                        <p className="text-xs text-[#727785]">Advisor: {advisor?.name ?? '—'}</p>
-                        {position && (
-                          <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full mt-1 inline-block"
-                            style={{ background: 'rgba(146,71,0,0.1)', color: '#924700' }}>
-                            {position.title}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1 text-xs text-[#727785] shrink-0">
-                        <Users className="w-3.5 h-3.5" />
-                        {club.memberIds.length}
-                      </div>
-                    </div>
-                  </Link>
-                )
-              })
-            )}
-          </div>
-        )}
-
-        {/* ── Tab: Attendance ── */}
-        {tab === 'attendance' && profileUser.role === 'student' && (
-          <div className="space-y-4">
-            {/* Stats header */}
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { value: `${attendancePct}%`, label: 'Streak', icon: <Flame className="w-4 h-4" />, color: '#10B981' },
-                { value: `${presentCount}`, label: 'Attended', icon: <Check className="w-4 h-4" />, color: '#0058be' },
-                { value: `${totalMeetings}`, label: 'Total', icon: <BookOpen className="w-4 h-4" />, color: '#924700' },
-              ].map(({ value, label, icon, color }) => (
-                <div key={label} className="rounded-2xl p-4 text-center"
-                  style={{ background: '#ffffff', boxShadow: '0 8px 24px rgba(0,0,0,0.04)' }}>
-                  <div className="flex items-center justify-center mb-1" style={{ color }}>{icon}</div>
-                  <p className="text-2xl font-bold text-[#191c1d]"
-                    style={{ fontFamily: 'var(--font-manrope, sans-serif)' }}>{value}</p>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#727785] mt-0.5">{label}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Privacy notice */}
-            <div className="flex items-center gap-2 text-xs text-amber-700 rounded-xl px-4 py-3"
-              style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.15)' }}>
-              <EyeOff className="w-3.5 h-3.5 shrink-0" />
-              Attendance is private — only visible to you and your club advisors.
-            </div>
-
-            {memberClubs.length === 0 ? (
-              <p className="text-sm text-[#727785] italic py-4">No club memberships to show attendance for.</p>
-            ) : (
-              memberClubs.map((club) => (
-                <AttendanceCalendar key={club.id} clubName={club.name} records={getClubAttendance(club.id)} />
-              ))
-            )}
-          </div>
-        )}
-
-        {/* ── Tab: Achievements ── */}
-        {tab === 'achievements' && (
-          <div className="space-y-4">
-            {/* Summary */}
-            <div className="rounded-2xl p-5 flex items-center gap-4"
-              style={{ background: '#ffffff', boxShadow: '0 8px 24px rgba(0,0,0,0.04)' }}>
-              <div className="w-14 h-14 rounded-full flex items-center justify-center shrink-0"
-                style={{ background: 'rgba(0,88,190,0.08)' }}>
-                <Award className="w-7 h-7 text-[#0058be]" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-[#191c1d]"
-                  style={{ fontFamily: 'var(--font-manrope, sans-serif)' }}>
-                  {earnedCount} / {achievements.length}
-                </p>
-                <p className="text-sm text-[#727785]">Achievements earned</p>
-              </div>
-            </div>
-
-            {/* Achievement grid */}
-            <div className="grid grid-cols-2 gap-3">
-              {achievements.map((a) => (
-                <div key={a.title}
-                  className="rounded-2xl p-4 flex items-start gap-3 transition-all"
-                  style={{
-                    background: a.earned ? '#ffffff' : '#f8f9fa',
-                    boxShadow: a.earned ? '0 8px 24px rgba(0,0,0,0.05)' : 'none',
-                    opacity: a.earned ? 1 : 0.5,
-                  }}>
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-                    style={{
-                      background: a.earned ? 'rgba(0,88,190,0.08)' : '#edeeef',
-                      color: a.earned ? '#0058be' : '#727785',
-                    }}>
-                    {a.icon}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-[#191c1d] leading-tight"
-                      style={{ fontFamily: 'var(--font-manrope, sans-serif)' }}>
-                      {a.title}
-                    </p>
-                    <p className="text-xs text-[#727785] mt-0.5 leading-tight">{a.desc}</p>
-                    {a.earned && (
-                      <span className="inline-flex items-center gap-0.5 text-[10px] font-bold uppercase tracking-widest mt-1"
-                        style={{ color: '#10B981' }}>
-                        <Check className="w-3 h-3" /> Earned
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   )
