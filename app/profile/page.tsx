@@ -265,62 +265,60 @@ export default function ProfilePage() {
         </div>
 
         {/* Profile content overlapping banner */}
-        <div className="px-8 pb-8 -mt-14 relative">
-          <div className="flex flex-col sm:flex-row items-start gap-6">
+        <div className="px-8 pb-8 -mt-16 relative">
+          <div className="flex items-end gap-7">
             {/* Avatar */}
-            <div className="rounded-2xl p-1 bg-white shadow-lg shadow-slate-900/10 shrink-0">
-              <div className="w-24 h-24 rounded-xl overflow-hidden">
-                <Avatar name={profileUser.name} size="lg" />
-              </div>
+            <div className="rounded-2xl p-1.5 bg-white shadow-lg shadow-slate-900/10 shrink-0">
+              <Avatar name={profileUser.name} size="lg" className="!w-28 !h-28 !text-3xl !rounded-xl" />
             </div>
 
-            {/* Info */}
-            <div className="flex-1 min-w-0 pt-16 sm:pt-2">
+            {/* Info — sits on the baseline of the avatar */}
+            <div className="flex-1 min-w-0 pb-1">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <div className="flex items-center gap-2.5 mb-1">
+                  <div className="flex items-center gap-3 mb-2">
                     {canEdit ? (
                       <Input
                         value={nameInput}
                         onChange={(e) => setNameInput(e.target.value)}
                         onBlur={saveName}
                         onKeyDown={(e) => e.key === 'Enter' && saveName()}
-                        className="h-9 text-2xl font-extrabold tracking-tight max-w-xs border-none shadow-none px-0 focus-visible:ring-0"
+                        className="h-auto text-3xl font-extrabold tracking-tight max-w-sm border-none shadow-none px-0 py-0 focus-visible:ring-0"
                         style={{ fontFamily: 'var(--font-manrope)' }}
                       />
                     ) : (
-                      <h1 className="text-2xl font-extrabold tracking-tight text-slate-900"
+                      <h1 className="text-3xl font-extrabold tracking-tight text-slate-900"
                         style={{ fontFamily: 'var(--font-manrope)' }}>
                         {profileUser.name}
                       </h1>
                     )}
-                    <BadgeCheck className="w-5 h-5 text-indigo-500 shrink-0" />
+                    <BadgeCheck className="w-6 h-6 text-indigo-500 shrink-0" />
                   </div>
-                  <div className="flex items-center gap-2.5">
-                    <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${ROLE_BADGE[profileUser.role]}`}>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <span className={`text-xs font-semibold px-3 py-1 rounded-full border ${ROLE_BADGE[profileUser.role]}`}>
                       {ROLE_LABEL[profileUser.role]}
                     </span>
                     <span className="text-sm text-slate-500">{profileUser.email}</span>
                     {canEdit && !editingEmail && (
                       <button onClick={() => { setEmailInput(profileUser.email); setEditingEmail(true) }}
                         className="text-slate-400 hover:text-slate-600 transition-colors">
-                        <Pencil className="w-3 h-3" />
+                        <Pencil className="w-3.5 h-3.5" />
                       </button>
                     )}
                   </div>
                   {editingEmail && (
-                    <div className="flex items-center gap-2 mt-2">
+                    <div className="flex items-center gap-2 mt-3">
                       <Input value={emailInput} onChange={(e) => setEmailInput(e.target.value)}
-                        className="h-7 text-xs max-w-xs" autoFocus onKeyDown={(e) => e.key === 'Enter' && saveEmail()} />
-                      <button onClick={saveEmail} className="text-emerald-600"><Check className="w-3.5 h-3.5" /></button>
-                      <button onClick={() => setEditingEmail(false)} className="text-slate-400"><X className="w-3.5 h-3.5" /></button>
+                        className="h-8 text-sm max-w-xs" autoFocus onKeyDown={(e) => e.key === 'Enter' && saveEmail()} />
+                      <button onClick={saveEmail} className="text-emerald-600"><Check className="w-4 h-4" /></button>
+                      <button onClick={() => setEditingEmail(false)} className="text-slate-400"><X className="w-4 h-4" /></button>
                     </div>
                   )}
                 </div>
 
                 <a href={`mailto:${profileUser.email}`}
-                  className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-xl text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors shrink-0">
-                  <Mail className="w-3.5 h-3.5" />
+                  className="hidden sm:inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-xl text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors shrink-0">
+                  <Mail className="w-4 h-4" />
                   Message
                 </a>
               </div>
