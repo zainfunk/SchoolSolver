@@ -260,15 +260,15 @@ export default function ProfilePage() {
       {/* ── Hero Banner ── */}
       <div className="rounded-2xl overflow-hidden bg-white border border-slate-200/60" style={{ boxShadow: '0 4px 24px rgba(15,23,42,0.04)' }}>
         {/* Gradient banner */}
-        <div className={`h-32 bg-gradient-to-r ${roleGradient[profileUser.role]} relative`}>
+        <div className={`h-28 bg-gradient-to-r ${roleGradient[profileUser.role]} relative`}>
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.2),transparent_70%)]" />
         </div>
 
         {/* Profile info — avatar + text side by side */}
-        <div className="px-8 pb-8 -mt-12">
-          <div className="flex items-end gap-6 mb-6">
-            <div className="rounded-2xl p-1.5 bg-white shadow-lg shadow-slate-900/10 shrink-0">
-              <Avatar name={profileUser.name} size="lg" className="!w-24 !h-24 !text-2xl !rounded-xl" />
+        <div className="px-8 pb-6 -mt-10">
+          <div className="flex items-end gap-5 mb-5">
+            <div className="rounded-2xl p-1 bg-white shadow-lg shadow-slate-900/10 shrink-0">
+              <Avatar name={profileUser.name} size="lg" className="!w-20 !h-20 !text-xl !rounded-xl" />
             </div>
             <div className="pb-1 min-w-0">
               <div className="flex items-center gap-3 mb-1">
@@ -325,7 +325,7 @@ export default function ProfilePage() {
       </div>
 
       {/* ── Stats Row ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { value: displayClubs.length, label: 'Clubs', icon: <Users className="w-4 h-4" />, color: 'text-indigo-600', bg: 'bg-indigo-50' },
           ...(profileUser.role === 'student' ? [

@@ -152,6 +152,12 @@ export default function SettingsPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-5" style={{ fontFamily: 'var(--font-inter)' }}>
 
+      {/* ── Page heading ── */}
+      <div>
+        <h2 className="text-2xl font-bold text-slate-900 tracking-tight" style={{ fontFamily: 'var(--font-manrope)' }}>Settings</h2>
+        <p className="text-sm text-slate-500 mt-1">Manage your preferences and privacy.</p>
+      </div>
+
       {/* ── Appearance ── */}
       <Section title="Appearance" icon={<Sun className="w-4 h-4" />}>
         <SettingRow
@@ -333,7 +339,7 @@ export default function SettingsPage() {
               <button
                 onClick={submitIssue}
                 disabled={!issueText.trim() || issueSubmitting}
-                className="inline-flex items-center gap-2 h-9 px-5 rounded-lg text-sm font-semibold text-white bg-slate-900 hover:bg-slate-800 shadow-sm transition disabled:opacity-40 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-2 h-9 px-5 rounded-lg text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {issueSubmitting ? 'Sending…' : 'Send Report'}
                 <ChevronRight className="w-3.5 h-3.5" />

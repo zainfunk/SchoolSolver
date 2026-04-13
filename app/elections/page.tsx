@@ -187,7 +187,7 @@ export default function FormsPage() {
         <p className="text-[10px] font-bold uppercase tracking-widest text-[#727785] mb-1">Civic Engagement</p>
         <h1 className="text-3xl font-bold text-[#191c1d]"
           style={{ fontFamily: 'var(--font-manrope, sans-serif)', letterSpacing: '-0.02em' }}>
-          Forms & Elections
+          Elections & Forms
         </h1>
         <p className="text-sm text-[#727785] mt-1">Participate in active elections and club decisions.</p>
       </div>
