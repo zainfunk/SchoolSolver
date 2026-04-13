@@ -25,6 +25,7 @@ interface AuthContextValue {
   devRole: Role | null
   setDevRole: (role: Role | null) => void
   refreshSchoolContext: () => void
+  switchSchool: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -244,7 +245,11 @@ export function MockAuthProvider({ children }: { children: ReactNode }) {
         const schoolId = userData?.school_id ?? undefined
 
         if (!schoolId) {
-          applySchoolState({ role })
+          // If the DB returned a user row with no school_id, that's authoritative — clear cache.
+          // But if the query returned nothing (RLS/timing), keep the cached session.
+          if (userData) {
+            applySchoolState({ role })
+          }
           return
         }
 
@@ -293,6 +298,25 @@ export function MockAuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('storage', onStorage)
   }, [clerkUser?.id])
 
+  async function switchSchool() {
+    try {
+      await fetch('/api/school/switch', { method: 'POST' })
+    } catch {
+      // proceed with local clear even if API fails
+    }
+    if (clerkUser?.id) {
+      clearSchoolSession(clerkUser.id)
+    }
+    setBaseUser((u) => ({ ...u, schoolId: undefined }))
+    setSchoolName(null)
+    setSchoolStatus(null)
+    setSchoolPrincipal(null)
+    setSchoolContactEmail(null)
+    setSchoolSetupCompletedAt(null)
+    hasRedirected.current = false
+    router.replace('/join')
+  }
+
   const currentUser: User = devRole
     ? { ...baseUser, role: devRole }
     : baseUser
@@ -318,6 +342,7 @@ export function MockAuthProvider({ children }: { children: ReactNode }) {
         devRole,
         setDevRole,
         refreshSchoolContext: () => setRefreshTick((tick) => tick + 1),
+        switchSchool,
       }}
     >
       {showChildren ? children : null}

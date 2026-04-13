@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Search, Settings, Database } from 'lucide-react'
+import { Search, Settings, Database, ArrowLeftRight } from 'lucide-react'
 import { UserButton } from '@clerk/nextjs'
 import { useMockAuth } from '@/lib/mock-auth'
 import NotificationBell from '@/components/NotificationBell'
@@ -30,7 +30,7 @@ function usePageTitle(pathname: string) {
 }
 
 export default function TopBar() {
-  const { currentUser } = useMockAuth()
+  const { currentUser, switchSchool, schoolName } = useMockAuth()
   const pathname = usePathname()
   const title = usePageTitle(pathname)
   const showDevTools = process.env.NODE_ENV === 'development'
@@ -68,6 +68,16 @@ export default function TopBar() {
             type="text"
           />
         </div>
+        {schoolName && currentUser.role !== 'superadmin' && (
+          <button
+            onClick={switchSchool}
+            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+            title="Switch schools"
+          >
+            <ArrowLeftRight className="w-3 h-3" />
+            Switch School
+          </button>
+        )}
         <div className="flex items-center gap-2 text-slate-400">
           <NotificationBell />
           <Link href="/settings" data-tour-id="tour-settings" className="p-1.5 rounded-lg hover:bg-slate-100 hover:text-slate-600 transition-colors">
