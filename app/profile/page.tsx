@@ -260,52 +260,53 @@ export default function ProfilePage() {
       {/* ── Hero Banner ── */}
       <div className="rounded-2xl overflow-hidden bg-white border border-slate-200/60" style={{ boxShadow: '0 4px 24px rgba(15,23,42,0.04)' }}>
         {/* Gradient banner */}
-        <div className={`h-36 bg-gradient-to-r ${roleGradient[profileUser.role]} relative`}>
+        <div className={`h-32 bg-gradient-to-r ${roleGradient[profileUser.role]} relative`}>
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.2),transparent_70%)]" />
-          {/* Avatar anchored at bottom-left of the banner */}
-          <div className="absolute -bottom-14 left-8">
-            <div className="rounded-2xl p-1.5 bg-white shadow-lg shadow-slate-900/10">
-              <Avatar name={profileUser.name} size="lg" className="!w-28 !h-28 !text-3xl !rounded-xl" />
-            </div>
-          </div>
         </div>
 
-        {/* Profile info — below the banner, padded left to clear the avatar */}
-        <div className="pt-20 px-8 pb-8">
-          <div className="flex items-start justify-between gap-6">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
+        {/* Profile info — avatar + text side by side */}
+        <div className="px-8 pb-8 -mt-12">
+          <div className="flex items-end gap-6 mb-6">
+            <div className="rounded-2xl p-1.5 bg-white shadow-lg shadow-slate-900/10 shrink-0">
+              <Avatar name={profileUser.name} size="lg" className="!w-24 !h-24 !text-2xl !rounded-xl" />
+            </div>
+            <div className="pb-1 min-w-0">
+              <div className="flex items-center gap-3 mb-1">
                 {canEdit ? (
                   <Input
                     value={nameInput}
                     onChange={(e) => setNameInput(e.target.value)}
                     onBlur={saveName}
                     onKeyDown={(e) => e.key === 'Enter' && saveName()}
-                    className="h-auto text-4xl font-extrabold tracking-tight max-w-md border-none shadow-none px-0 py-0 focus-visible:ring-0"
+                    className="h-auto text-3xl font-extrabold tracking-tight max-w-md border-none shadow-none px-0 py-0 focus-visible:ring-0"
                     style={{ fontFamily: 'var(--font-manrope)' }}
                   />
                 ) : (
-                  <h1 className="text-4xl font-extrabold tracking-tight text-slate-900"
+                  <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 truncate"
                     style={{ fontFamily: 'var(--font-manrope)' }}>
                     {profileUser.name}
                   </h1>
                 )}
-                <BadgeCheck className="w-7 h-7 text-indigo-500 shrink-0" />
+                <BadgeCheck className="w-6 h-6 text-indigo-500 shrink-0" />
               </div>
               <div className="flex items-center gap-3 flex-wrap">
-                <span className={`text-sm font-semibold px-3.5 py-1 rounded-full border ${ROLE_BADGE[profileUser.role]}`}>
+                <span className={`text-xs font-semibold px-3 py-0.5 rounded-full border ${ROLE_BADGE[profileUser.role]}`}>
                   {ROLE_LABEL[profileUser.role]}
                 </span>
-                <span className="text-base text-slate-500">{profileUser.email}</span>
+                <span className="text-sm text-slate-500 truncate">{profileUser.email}</span>
                 {canEdit && !editingEmail && (
                   <button onClick={() => { setEmailInput(profileUser.email); setEditingEmail(true) }}
                     className="text-slate-400 hover:text-slate-600 transition-colors">
-                    <Pencil className="w-4 h-4" />
+                    <Pencil className="w-3.5 h-3.5" />
                   </button>
                 )}
               </div>
+            </div>
+          </div>
+          <div className="flex items-start justify-between gap-6">
+            <div>
               {editingEmail && (
-                <div className="flex items-center gap-2 mt-3">
+                <div className="flex items-center gap-2 mb-3">
                   <Input value={emailInput} onChange={(e) => setEmailInput(e.target.value)}
                     className="h-8 text-sm max-w-xs" autoFocus onKeyDown={(e) => e.key === 'Enter' && saveEmail()} />
                   <button onClick={saveEmail} className="text-emerald-600"><Check className="w-4 h-4" /></button>
