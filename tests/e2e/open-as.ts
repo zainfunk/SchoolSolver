@@ -86,7 +86,7 @@ async function main() {
 
   // Keep alive until browser closes
   await new Promise<void>((resolve) => {
-    browser.on('disconnected', resolve)
+    browser.on('disconnected', () => resolve())
   })
 }
 
