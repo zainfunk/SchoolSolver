@@ -574,17 +574,17 @@ export default function ClubDetailPage({ params }: PageProps) {
       />
 
       {/* ── Hero Section ── */}
-      <section className={`relative overflow-hidden flex items-center px-12 rounded-3xl mb-8 bg-gradient-to-br ${heroTheme.bg}`} style={{ minHeight: '380px' }}>
+      <section className={`relative overflow-hidden flex items-center px-5 sm:px-8 md:px-12 rounded-3xl mb-8 bg-gradient-to-br ${heroTheme.bg} min-h-[320px] md:min-h-[380px]`}>
         {/* Decorative pattern */}
         <div className="editorial-pattern-robotics absolute inset-0 pointer-events-none" style={{ opacity: 0.04 }} />
         <div className="absolute inset-0 bg-gradient-to-r from-white/90 via-white/60 to-transparent pointer-events-none" />
 
         {/* Edit mode overlay */}
         {editMode && (
-          <div className="absolute inset-0 z-20 bg-white/97 p-10 overflow-y-auto">
+          <div className="absolute inset-0 z-20 bg-white/97 p-5 md:p-10 overflow-y-auto">
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-6">Editing Club Info</p>
             <div className="max-w-xl space-y-4">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Club Image</label>
                   <div className="flex items-center gap-3">
@@ -677,8 +677,8 @@ export default function ClubDetailPage({ params }: PageProps) {
         )}
 
         {/* Hero content */}
-        <div className="relative z-10 max-w-2xl py-16">
-          <div className="flex items-center gap-4 mb-6">
+        <div className="relative z-10 max-w-2xl py-10 md:py-16 w-full min-w-0">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-6">
             <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest text-white" style={{ background: heroTheme.accent }}>
               {heroTheme.cluster}
             </span>
@@ -692,8 +692,8 @@ export default function ClubDetailPage({ params }: PageProps) {
             )}
           </div>
 
-          <div className="flex items-center gap-5 mb-4">
-            <div className="w-16 h-16 rounded-2xl bg-white shadow-lg flex items-center justify-center text-3xl shrink-0 overflow-hidden">
+          <div className="flex items-center gap-4 md:gap-5 mb-4 min-w-0">
+            <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-white shadow-lg flex items-center justify-center text-2xl md:text-3xl shrink-0 overflow-hidden">
               {club.iconUrl && (club.iconUrl.startsWith('data:') || club.iconUrl.startsWith('http')) ? (
                 <img src={club.iconUrl} alt={club.name} className="w-full h-full object-cover" />
               ) : (
@@ -701,8 +701,8 @@ export default function ClubDetailPage({ params }: PageProps) {
               )}
             </div>
             <h1
-              className="font-extrabold tracking-tight text-slate-900 leading-none"
-              style={{ fontFamily: 'var(--font-manrope)', fontSize: 'clamp(2rem, 4vw, 3.5rem)' }}
+              className="font-extrabold tracking-tight text-slate-900 leading-none break-words min-w-0"
+              style={{ fontFamily: 'var(--font-manrope)', fontSize: 'clamp(1.5rem, 6vw, 3.5rem)' }}
             >
               {club.name}
             </h1>
@@ -808,10 +808,10 @@ export default function ClubDetailPage({ params }: PageProps) {
       </section>
 
       {/* ── Bento Grid ── */}
-      <div className="grid grid-cols-12 gap-8 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-5 md:gap-8 mb-8">
 
         {/* ── Left: Leadership + Members ── */}
-        <aside className="col-span-3 space-y-5">
+        <aside className="md:col-span-3 space-y-5 min-w-0">
 
           {/* Advisor widget */}
           {advisor && (
@@ -990,9 +990,9 @@ export default function ClubDetailPage({ params }: PageProps) {
       <div className="space-y-5">
 
         {/* Members list with permissions */}
-        <div className="bg-white rounded-2xl p-7 shadow-sm border border-slate-100">
-          <div className="flex items-center justify-between mb-5">
-            <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2" style={{ fontFamily: 'var(--font-manrope)' }}>
+        <div className="bg-white rounded-2xl p-5 md:p-7 shadow-sm border border-slate-100">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-5">
+            <h3 className="text-xl font-bold text-slate-900 flex flex-wrap items-center gap-2" style={{ fontFamily: 'var(--font-manrope)' }}>
               <Users className="w-5 h-5" />All Members <span className="text-sm font-medium text-slate-400">· {club.memberIds.length}/{club.capacity === null ? '∞' : club.capacity}</span>
             </h3>
             {isAdvisor && !editingCapacity && (
@@ -1000,7 +1000,7 @@ export default function ClubDetailPage({ params }: PageProps) {
             )}
           </div>
           {isAdvisor && editingCapacity && (
-            <div className="mb-5 flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
+            <div className="mb-5 flex flex-wrap items-center gap-3 p-4 bg-gray-50 rounded-xl">
               <label className="flex items-center gap-2 text-sm text-gray-700">
                 <input type="checkbox" checked={capacityUnlimited} onChange={(e) => setCapacityUnlimited(e.target.checked)} />
                 Unlimited
@@ -1025,8 +1025,8 @@ export default function ClubDetailPage({ params }: PageProps) {
               const positions = club.leadershipPositions.filter((lp) => lp.userId === member.id)
               const canCreate = club.eventCreatorIds.includes(member.id)
               return (
-                <div key={member.id} className="flex items-center justify-between py-3 border-b border-gray-50 last:border-0 pr-4">
-                  <div className="flex items-center gap-3 flex-wrap">
+                <div key={member.id} className="flex items-center justify-between gap-2 py-3 border-b border-gray-50 last:border-0 sm:pr-4">
+                  <div className="flex items-center gap-2 md:gap-3 flex-wrap min-w-0">
                     <Avatar name={member.name} size="sm" />
                     <Link href={`/profile/${member.id}`} className="text-sm font-semibold text-gray-800 hover:text-[#0058be] transition-colors">
                       {member.name}
@@ -1057,7 +1057,7 @@ export default function ClubDetailPage({ params }: PageProps) {
 
         {/* Join Requests — advisor only */}
         {isAdvisor && (
-          <div className="bg-white rounded-2xl p-7 shadow-sm border border-slate-100">
+          <div className="bg-white rounded-2xl p-5 md:p-7 shadow-sm border border-slate-100">
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2" style={{ fontFamily: 'var(--font-manrope)' }}>
                 <ClockIcon className="w-5 h-5" />Join Requests
@@ -1080,11 +1080,11 @@ export default function ClubDetailPage({ params }: PageProps) {
                 {pendingRequests.map((req) => {
                   const student = resolveUser(req.userId)
                   return (
-                    <div key={req.id} className="flex items-center justify-between gap-3 py-3 border-b border-gray-50 last:border-0">
-                      <div className="flex items-center gap-3">
+                    <div key={req.id} className="flex flex-wrap items-center justify-between gap-3 py-3 border-b border-gray-50 last:border-0">
+                      <div className="flex items-center gap-3 min-w-0">
                         <Avatar name={student?.name ?? '?'} size="sm" />
-                        <div>
-                          <p className="text-sm font-semibold text-gray-800">{student?.name ?? 'Unknown'}</p>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-gray-800 truncate">{student?.name ?? 'Unknown'}</p>
                           <p className="text-xs text-gray-400">{formatTime(req.requestedAt)}</p>
                         </div>
                       </div>
@@ -1108,7 +1108,7 @@ export default function ClubDetailPage({ params }: PageProps) {
 
         {/* My Attendance — student members only */}
         {isMember && !isAdvisor && currentUser.role === 'student' && (
-          <div className="bg-white rounded-2xl p-7 shadow-sm border border-slate-100">
+          <div className="bg-white rounded-2xl p-5 md:p-7 shadow-sm border border-slate-100">
             <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2 mb-5" style={{ fontFamily: 'var(--font-manrope)' }}>
               <CheckCircle className="w-5 h-5" />My Attendance
             </h3>
@@ -1144,7 +1144,7 @@ export default function ClubDetailPage({ params }: PageProps) {
 
         {/* All Attendance — advisor only */}
         {isAdvisor && (
-          <div className="bg-white rounded-2xl p-7 shadow-sm border border-slate-100" data-tour-id="tour-attendance-section">
+          <div className="bg-white rounded-2xl p-5 md:p-7 shadow-sm border border-slate-100" data-tour-id="tour-attendance-section">
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2" style={{ fontFamily: 'var(--font-manrope)' }}>
                 <CheckCircle className="w-5 h-5" />Attendance
@@ -1235,9 +1235,9 @@ export default function ClubDetailPage({ params }: PageProps) {
                       const rec = attendanceRecords.find((r) => r.userId === member.id && r.meetingDate === manualDate)
                       const isPresent = rec?.present
                       return (
-                        <div key={member.id} className="flex items-center justify-between py-1">
-                          <span className="text-sm text-gray-700">{member.name}</span>
-                          <div className="flex gap-1">
+                        <div key={member.id} className="flex flex-wrap items-center justify-between gap-2 py-1">
+                          <span className="text-sm text-gray-700 min-w-0 break-words">{member.name}</span>
+                          <div className="flex gap-1 shrink-0">
                             <button onClick={() => setManualAttendance(member.id, true)}
                               className={`text-xs px-2.5 py-1 rounded-lg border font-semibold transition-colors ${isPresent === true ? 'bg-emerald-500 text-white border-emerald-500' : 'text-gray-400 border-gray-200 hover:border-emerald-400 hover:text-emerald-600'}`}>
                               Present
@@ -1287,7 +1287,7 @@ export default function ClubDetailPage({ params }: PageProps) {
 
         {/* Elections */}
         {(isMember || isAdvisor) && (
-          <div className="bg-white rounded-2xl p-7 shadow-sm border border-slate-100">
+          <div className="bg-white rounded-2xl p-5 md:p-7 shadow-sm border border-slate-100">
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2" style={{ fontFamily: 'var(--font-manrope)' }}>
                 <Vote className="w-5 h-5" />Elections
@@ -1331,11 +1331,11 @@ export default function ClubDetailPage({ params }: PageProps) {
                   const winner = !poll.isOpen ? poll.candidates.reduce((a, b) => a.votes.length >= b.votes.length ? a : b) : null
                   return (
                     <div key={poll.id} className={`rounded-2xl p-5 border border-gray-100 bg-gray-50 ${!poll.isOpen ? 'opacity-70' : ''}`}>
-                      <div className="flex items-center justify-between mb-3">
-                        <p className="font-semibold text-sm text-gray-900" style={{ fontFamily: 'var(--font-manrope)' }}>
+                      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                        <p className="font-semibold text-sm text-gray-900 min-w-0 break-words" style={{ fontFamily: 'var(--font-manrope)' }}>
                           {poll.positionTitle} Election
                         </p>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full ${poll.isOpen ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-400'}`}>
                             {poll.isOpen ? 'Open' : 'Closed'}
                           </span>
@@ -1368,9 +1368,9 @@ export default function ClubDetailPage({ params }: PageProps) {
                                     {hasVotedThis ? '✓' : ''}
                                   </span>
                                 )}
-                                <div className="flex-1 flex items-center justify-between">
-                                  <span className="text-sm text-gray-700">{user?.name}</span>
-                                  <span className="text-xs text-gray-400">{candidate.votes.length} vote{candidate.votes.length !== 1 ? 's' : ''}{totalVotes > 0 ? ` · ${pct}%` : ''}</span>
+                                <div className="flex-1 flex flex-wrap items-center justify-between gap-2 min-w-0">
+                                  <span className="text-sm text-gray-700 min-w-0 break-words">{user?.name}</span>
+                                  <span className="text-xs text-gray-400 shrink-0">{candidate.votes.length} vote{candidate.votes.length !== 1 ? 's' : ''}{totalVotes > 0 ? ` · ${pct}%` : ''}</span>
                                 </div>
                               </div>
                               <div className="ml-7 w-full bg-gray-200 rounded-full h-1">

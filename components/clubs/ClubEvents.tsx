@@ -52,7 +52,7 @@ export default function ClubEvents({
   const upcoming = events.filter((e) => e.date >= today)
 
   return (
-    <section className="col-span-3 space-y-5" data-tour-id="tour-events-section">
+    <section className="md:col-span-3 space-y-5 min-w-0" data-tour-id="tour-events-section">
       {/* Upcoming Events */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
         <div className="flex items-center justify-between mb-6">

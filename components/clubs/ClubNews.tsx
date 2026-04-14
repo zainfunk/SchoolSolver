@@ -31,7 +31,7 @@ export default function ClubNews({
   pinned, setPinned, onPost, onDelete, formatTime,
 }: ClubNewsProps) {
   return (
-    <section className="col-span-6 space-y-6">
+    <section className="md:col-span-6 space-y-6 min-w-0">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-slate-900" style={{ fontFamily: 'var(--font-manrope)' }}>
           News
@@ -68,13 +68,13 @@ export default function ClubNews({
       )}
 
       {!(isMember || isAdvisor) && (
-        <div className="bg-white rounded-3xl p-8 border border-slate-100 text-center">
+        <div className="bg-white rounded-3xl p-5 md:p-8 border border-slate-100 text-center">
           <p className="text-gray-400 text-sm">Join the club to see updates.</p>
         </div>
       )}
 
       {(isMember || isAdvisor) && news.length === 0 && !showForm && (
-        <div className="bg-white rounded-3xl p-8 border border-slate-100 text-center">
+        <div className="bg-white rounded-3xl p-5 md:p-8 border border-slate-100 text-center">
           <p className="text-gray-400 text-sm">No posts yet.</p>
         </div>
       )}
@@ -84,7 +84,7 @@ export default function ClubNews({
         const canDelete = isAdvisor || item.authorId === currentUserId
         if (item.isPinned) {
           return (
-            <div key={item.id} className="bg-[#0058be]/5 rounded-3xl p-8 border border-[#0058be]/10 relative overflow-hidden">
+            <div key={item.id} className="bg-[#0058be]/5 rounded-3xl p-5 md:p-8 border border-[#0058be]/10 relative overflow-hidden">
               <div className="absolute top-4 right-4">
                 <Newspaper className="w-4 h-4 text-[#0058be]" />
               </div>
@@ -112,7 +112,7 @@ export default function ClubNews({
           )
         }
         return (
-          <div key={item.id} className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm hover:-translate-y-1 transition-transform">
+          <div key={item.id} className="bg-white rounded-3xl p-5 md:p-8 border border-slate-100 shadow-sm hover:-translate-y-1 transition-transform">
             <div className="flex items-center gap-2 mb-4 text-slate-400">
               <Clock className="w-4 h-4" />
               <span className="text-xs font-bold uppercase tracking-widest">General Update</span>
