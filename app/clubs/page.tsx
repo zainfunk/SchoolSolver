@@ -160,23 +160,23 @@ export default function ClubsPage() {
   })
 
   return (
-    <div className="max-w-7xl mx-auto">
-      <header className="mb-12">
-        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 mb-8">
-          <div>
+    <div className="max-w-7xl mx-auto min-w-0">
+      <header className="mb-8 md:mb-12">
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 md:gap-8 mb-6 md:mb-8">
+          <div className="min-w-0">
             <h2
-              className="font-extrabold text-[3rem] leading-[1.05] tracking-tight text-gray-900 mb-4"
+              className="font-extrabold text-[2rem] md:text-[3rem] leading-[1.05] tracking-tight text-gray-900 mb-3 md:mb-4 break-words"
               style={{ fontFamily: 'var(--font-manrope)' }}
             >
               Explore <br />
               <span className="text-[#0058be]">Communities</span>
             </h2>
-            <p className="text-gray-500 max-w-md text-base leading-relaxed">
+            <p className="text-gray-500 max-w-md text-sm md:text-base leading-relaxed">
               Discover academic circles, creative collectives, and initiatives designed to expand your school experience.
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center bg-gray-100 px-3 py-2.5 rounded-xl min-w-[280px] gap-2">
+          <div className="flex items-center gap-2 md:gap-3 w-full lg:w-auto min-w-0">
+            <div className="flex items-center bg-gray-100 px-3 py-2.5 rounded-xl flex-1 lg:min-w-[280px] lg:flex-none gap-2 min-w-0">
               <Search className="w-4 h-4 text-gray-400 shrink-0" />
               <input
                 className="bg-transparent border-none focus:outline-none w-full text-sm text-gray-900 placeholder:text-gray-400 font-medium"
@@ -188,7 +188,7 @@ export default function ClubsPage() {
             {canCreateClub && (
               <button
                 onClick={() => setShowCreateForm((v) => !v)}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white bg-[#0058be] hover:bg-[#0047a0] transition-colors shrink-0"
+                className="flex items-center gap-2 px-3 md:px-4 py-2.5 rounded-xl text-sm font-bold text-white bg-[#0058be] hover:bg-[#0047a0] transition-colors shrink-0 whitespace-nowrap"
               >
                 {showCreateForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
                 {showCreateForm ? 'Cancel' : 'New Club'}
@@ -280,9 +280,9 @@ export default function ClubsPage() {
       </header>
 
       {isLoading && clubs.length === 0 ? (
-        <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
+        <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="bg-white rounded-xl p-7 border border-gray-100 min-h-[260px]" style={{ boxShadow: '0 8px 24px rgba(0,0,0,0.04)' }}>
+            <div key={i} className="bg-white rounded-xl p-5 md:p-7 border border-gray-100 min-h-[260px] min-w-0" style={{ boxShadow: '0 8px 24px rgba(0,0,0,0.04)' }}>
               <Skeleton className="w-14 h-14 rounded-full mb-5" />
               <Skeleton className="h-5 w-3/4 mb-2" />
               <Skeleton className="h-3 w-full mb-1" />
@@ -302,7 +302,7 @@ export default function ClubsPage() {
           <p className="text-sm">{clubs.length === 0 ? 'No clubs have been created yet.' : 'No clubs match your search.'}</p>
         </div>
       ) : (
-        <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
+        <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((club, i) => {
             const advisorName = advisorNames[club.advisorId]
             const isMember = myMembershipClubIds.includes(club.id)
@@ -314,7 +314,7 @@ export default function ClubsPage() {
 
             return (
               <Link key={club.id} href={`/clubs/${club.id}`}>
-                <div className="group relative bg-white rounded-xl p-7 overflow-hidden shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-gray-100 flex flex-col justify-between min-h-[260px] hover:shadow-[0_12px_32px_rgba(0,0,0,0.09)] transition-all cursor-pointer">
+                <div className="group relative bg-white rounded-xl p-5 md:p-7 overflow-hidden shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-gray-100 flex flex-col justify-between min-h-[260px] min-w-0 hover:shadow-[0_12px_32px_rgba(0,0,0,0.09)] transition-all cursor-pointer">
                   <div
                     className="absolute top-0 right-0 w-1/3 h-full opacity-20 group-hover:opacity-30 transition-opacity pointer-events-none"
                     style={{
@@ -325,12 +325,12 @@ export default function ClubsPage() {
                       color: 'currentColor',
                     }}
                   />
-                  <div>
+                  <div className="min-w-0">
                     <div className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl mb-5 ${theme.icon}`}>
                       {club.iconUrl ?? '📌'}
                     </div>
-                    <div className="flex items-start gap-2 mb-2">
-                      <h3 className="font-bold text-xl text-gray-900 leading-tight flex-1" style={{ fontFamily: 'var(--font-manrope)' }}>
+                    <div className="flex items-start gap-2 mb-2 min-w-0">
+                      <h3 className="font-bold text-lg md:text-xl text-gray-900 leading-tight flex-1 min-w-0 break-words" style={{ fontFamily: 'var(--font-manrope)' }}>
                         {club.name}
                       </h3>
                       {isMember && (
