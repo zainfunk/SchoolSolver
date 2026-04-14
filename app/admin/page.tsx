@@ -248,7 +248,7 @@ export default function AdminPage() {
 
         {/* ── Invite Codes ── */}
         {invites && (invites.studentCode || invites.advisorCode || invites.adminCode) && (
-          <div className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/50 via-white to-emerald-50/30 p-5">
+          <div className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/50 via-white to-emerald-50/30 p-4 md:p-5">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-emerald-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
                 <KeyRound className="w-4 h-4 text-white" />
@@ -258,7 +258,7 @@ export default function AdminPage() {
                 <p className="text-xs text-slate-500">Share at <span className="font-mono text-indigo-600">/join</span> to onboard users</p>
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {([
                 { label: 'Students', code: invites.studentCode, color: 'text-emerald-600' },
                 { label: 'Advisors', code: invites.advisorCode, color: 'text-indigo-600' },
@@ -274,7 +274,7 @@ export default function AdminPage() {
                     )}
                   </div>
                   {code ? (
-                    <code className="font-mono text-sm font-bold text-slate-900 tracking-tight">{code}</code>
+                    <code className="font-mono text-sm font-bold text-slate-900 tracking-tight break-all">{code}</code>
                   ) : (
                     <span className="text-xs text-slate-400 italic">Not set</span>
                   )}
@@ -341,18 +341,18 @@ export default function AdminPage() {
           ) : (
             <div className="divide-y divide-slate-50">
               {allUsers.map((user) => (
-                <div key={user.id} className="flex items-center justify-between gap-4 px-5 py-3">
-                  <div className="flex items-center gap-3 min-w-0">
+                <div key={user.id} className="flex flex-wrap items-center justify-between gap-3 px-4 md:px-5 py-3">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
                     <Avatar name={user.name} size="sm" />
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-semibold text-slate-900 truncate">{user.name}</span>
                         {user.id === actualUser.id && <span className="text-[9px] font-bold text-slate-400 uppercase">you</span>}
                       </div>
-                      <span className="text-xs text-slate-400">{user.email}</span>
+                      <span className="text-xs text-slate-400 break-all">{user.email}</span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
                     {(['student', 'advisor', 'admin'] as Exclude<Role, 'superadmin'>[]).map((nextRole) => (
                       <button
                         key={nextRole}
@@ -383,7 +383,8 @@ export default function AdminPage() {
               <p className="text-xs text-slate-500">Click a name to view their profile</p>
             </div>
           </div>
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[560px]">
             <thead>
               <tr className="border-b border-slate-100 text-[11px] font-bold uppercase tracking-widest text-slate-400">
                 <th className="px-5 py-2.5 text-left">Student</th>
@@ -422,19 +423,20 @@ export default function AdminPage() {
               })}
             </tbody>
           </table>
+          </div>
         </div>
 
         {/* ── Elections ── */}
         <div className="rounded-2xl bg-white border border-slate-100 shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-            <div className="flex items-center gap-3">
+          <div className="px-4 md:px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-3 min-w-0">
               <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center"><Vote className="w-4 h-4 text-purple-600" /></div>
               <div>
                 <h3 className="text-sm font-bold text-slate-900" style={{ fontFamily: 'var(--font-manrope)' }}>School Elections</h3>
                 <p className="text-xs text-slate-500">All students and staff can vote</p>
               </div>
             </div>
-            <button onClick={() => setShowElectionForm((v) => !v)} className="inline-flex items-center gap-1.5 h-8 px-4 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 shadow-sm transition">
+            <button onClick={() => setShowElectionForm((v) => !v)} className="inline-flex items-center gap-1.5 h-8 px-4 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 shadow-sm transition shrink-0">
               <Plus className="w-3.5 h-3.5" />New Election
             </button>
           </div>
@@ -453,7 +455,7 @@ export default function AdminPage() {
               </div>
               <div>
                 <label className="text-xs font-medium text-slate-600 block mb-1">Candidates * (select 2+)</label>
-                <div className="grid grid-cols-2 gap-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
                   {students.map((s) => (
                     <label key={s.id} className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer py-0.5">
                       <input type="checkbox" checked={electionCandidateIds.includes(s.id)} onChange={() => toggleElectionCandidate(s.id)} className="accent-indigo-600" />
@@ -479,9 +481,9 @@ export default function AdminPage() {
               const totalVotes = election.candidates.reduce((s, c) => s + c.votes.length, 0)
               const winner = !election.isOpen ? election.candidates.reduce((a, b) => (a.votes.length >= b.votes.length ? a : b)) : null
               return (
-                <div key={election.id} className="px-5 py-4">
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <div>
+                <div key={election.id} className="px-4 md:px-5 py-4">
+                  <div className="flex items-start justify-between gap-3 mb-3 flex-wrap">
+                    <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-slate-900" style={{ fontFamily: 'var(--font-manrope)' }}>{election.positionTitle}</p>
                       {election.description && <p className="text-xs text-slate-500 mt-0.5">{election.description}</p>}
                     </div>
@@ -504,12 +506,12 @@ export default function AdminPage() {
                       const user = getUserById(c.userId)
                       const pct = totalVotes > 0 ? Math.round((c.votes.length / totalVotes) * 100) : 0
                       return (
-                        <div key={c.userId} className="flex items-center gap-3">
-                          <span className="text-xs font-medium text-slate-700 w-24 shrink-0 truncate">{user?.name}</span>
-                          <div className="flex-1 h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                        <div key={c.userId} className="flex items-center gap-2 md:gap-3">
+                          <span className="text-xs font-medium text-slate-700 w-20 md:w-24 shrink-0 truncate">{user?.name}</span>
+                          <div className="flex-1 min-w-0 h-1.5 rounded-full bg-slate-100 overflow-hidden">
                             <div className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all" style={{ width: `${pct}%` }} />
                           </div>
-                          <span className="text-[11px] text-slate-400 w-16 text-right shrink-0">{c.votes.length} ({pct}%)</span>
+                          <span className="text-[11px] text-slate-400 w-14 md:w-16 text-right shrink-0">{c.votes.length} ({pct}%)</span>
                         </div>
                       )
                     })}
@@ -538,7 +540,7 @@ export default function AdminPage() {
           ) : (
             <div className="divide-y divide-slate-50">
               {issueReports.map((report) => (
-                <div key={report.id} className={`px-5 py-3.5 flex items-start justify-between gap-4 ${report.status === 'resolved' ? 'opacity-50' : ''}`}>
+                <div key={report.id} className={`px-4 md:px-5 py-3.5 flex items-start justify-between gap-3 flex-wrap ${report.status === 'resolved' ? 'opacity-50' : ''}`}>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                       <span className="text-sm font-semibold text-slate-900">{report.reporter_name}</span>
@@ -546,7 +548,7 @@ export default function AdminPage() {
                         report.status === 'open' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
                       }`}>{report.status}</span>
                     </div>
-                    <p className="text-sm text-slate-600 leading-relaxed">{report.message}</p>
+                    <p className="text-sm text-slate-600 leading-relaxed break-words">{report.message}</p>
                     <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
                       <Clock className="w-3 h-3" />
                       {new Date(report.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
