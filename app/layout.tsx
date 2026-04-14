@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Manrope, Inter } from "next/font/google";
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
@@ -6,6 +6,7 @@ import { MockAuthProvider } from "@/lib/mock-auth";
 import { ChatProvider } from "@/lib/chat-store";
 import AppShell from "@/components/layout/AppShell";
 import SettingsProvider from "@/components/SettingsProvider";
+import RealtimeSyncProvider from "@/components/RealtimeSyncProvider";
 import TourWrapper from "@/components/TourWrapper";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { Toaster } from "sonner";
@@ -35,6 +36,25 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Clubit",
   description: "Your school's club hub",
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: "/icons/icon.svg",
+    apple: [
+      { url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
+  },
+  appleWebApp: {
+    capable: true,
+    title: "ClubIt",
+    statusBarStyle: "default",
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#6366f1",
 };
 
 export default function RootLayout({
@@ -56,6 +76,7 @@ export default function RootLayout({
           }}
         />
         <MockAuthProvider>
+          <RealtimeSyncProvider>
           <ChatProvider>
             <SettingsProvider>
               <TourWrapper>
@@ -65,6 +86,7 @@ export default function RootLayout({
               </TourWrapper>
             </SettingsProvider>
           </ChatProvider>
+          </RealtimeSyncProvider>
         </MockAuthProvider>
       </body>
     </html>

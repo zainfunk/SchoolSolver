@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { useMockAuth } from '@/lib/mock-auth'
-import { supabase } from '@/lib/supabase'
+import { onRealtimeEvent } from '@/lib/realtime'
 import { ChatMessage } from '@/types'
 
 interface ChatContextValue {
@@ -29,12 +29,36 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [sendError, setSendError] = useState<string | null>(null)
 
+  /**
+   * Merge incoming messages into state, deduplicating by id.
+   * Also collapses optimistic temp messages: if an incoming message's
+   * content + senderId match a temp (`msg-temp-*`) entry, the temp is replaced.
+   */
   function mergeMessages(incoming: ChatMessage[]) {
     setMessages((prev) => {
       const map = new Map(prev.map((m) => [m.id, m]))
+
       for (const m of incoming) {
+        // Deduplicate: if this real message matches an optimistic temp, remove the temp.
+        // We match on senderId + content + clubId AND require the temp to be recent
+        // (within 60s) to avoid false matches when the same content is sent twice.
+        if (!m.id.startsWith('msg-temp-')) {
+          for (const [key, existing] of map) {
+            if (
+              key.startsWith('msg-temp-') &&
+              existing.senderId === m.senderId &&
+              existing.content === m.content &&
+              existing.clubId === m.clubId &&
+              Math.abs(new Date(existing.sentAt).getTime() - new Date(m.sentAt).getTime()) < 60_000
+            ) {
+              map.delete(key)
+              break
+            }
+          }
+        }
         map.set(m.id, m)
       }
+
       return Array.from(map.values()).sort((a, b) => a.sentAt.localeCompare(b.sentAt))
     })
   }
@@ -45,7 +69,9 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       if (!res.ok) return
       const data = await res.json() as { messages?: Record<string, unknown>[] }
       if (data.messages) {
-        setMessages(data.messages.map(mapRow).sort((a, b) => a.sentAt.localeCompare(b.sentAt)))
+        // Use mergeMessages instead of setMessages so we don't overwrite
+        // realtime events that arrived while the fetch was in flight.
+        mergeMessages(data.messages.map(mapRow))
       }
     } catch (err) {
       console.error('chat fetch error', err)
@@ -62,29 +88,21 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser.schoolId])
 
-  // Realtime subscription (bonus) + polling fallback (reliable)
+  // Listen for realtime chat events from the centralised subscription manager
+  useEffect(() => {
+    const unsub = onRealtimeEvent((event) => {
+      if (event.type === 'chat_message_insert') {
+        mergeMessages([mapRow(event.payload)])
+      }
+    })
+    return unsub
+  }, [])
+
+  // Polling fallback — keeps things in sync if realtime channel drops
   useEffect(() => {
     if (!currentUser.schoolId) return
-
-    const channel = supabase
-      .channel(`chat_messages_${currentUser.schoolId}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'chat_messages' },
-        (payload) => {
-          mergeMessages([mapRow(payload.new as Record<string, unknown>)])
-        }
-      )
-      .subscribe()
-
-    const interval = setInterval(() => {
-      void fetchMessages()
-    }, 30000)
-
-    return () => {
-      supabase.removeChannel(channel)
-      clearInterval(interval)
-    }
+    const interval = setInterval(() => { void fetchMessages() }, 30_000)
+    return () => { clearInterval(interval) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser.schoolId])
 

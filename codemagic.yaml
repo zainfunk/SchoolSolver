@@ -1,0 +1,64 @@
+workflows:
+  ios-build:
+    name: ClubIt iOS Build
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: Codemagic  # name of your App Store Connect API key in Codemagic
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.clubit.app
+      xcode: 16
+      node: 20
+      vars:
+        # Set this in Codemagic dashboard -> Environment variables
+        APP_SERVER_URL: "https://clubit.vercel.app"
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+    scripts:
+      - name: Install Node dependencies
+        script: |
+          npm ci
+
+      - name: Build Next.js app
+        script: |
+          npm run build
+
+      - name: Capacitor sync iOS
+        # APP_SERVER_URL env var is read by capacitor.config.ts at sync time
+        script: |
+          npx cap sync ios
+
+      - name: Set up code signing
+        script: |
+          xcode-project use-profiles
+
+      - name: Build iOS app archive
+        script: |
+          cd ios/App
+          xcode-project build-ipa \
+            --workspace App.xcworkspace \
+            --scheme App
+
+    artifacts:
+      - ios/App/build/**/*.ipa
+      - ios/App/build/**/*.xcarchive
+
+    publishing:
+      email:
+        recipients:
+          - rithwik@clubit.app  # update with your email
+        notify:
+          success: true
+          failure: true
+      # Uncomment to publish to TestFlight automatically:
+      # app_store_connect:
+      #   auth: integration
+      #   submit_to_testflight: true
+      #   beta_groups:
+      #     - Internal Testers

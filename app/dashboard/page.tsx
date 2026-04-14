@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { useMockAuth } from '@/lib/mock-auth'
 import { supabase } from '@/lib/supabase'
-import { Users, BookOpen, Pin, Calendar, MessageSquare, CheckCircle, Clock, AlertCircle } from 'lucide-react'
+import { Users, BookOpen, Pin, Calendar, MessageSquare, CheckCircle, Clock, AlertCircle, ChevronDown, ChevronUp, ArrowRight } from 'lucide-react'
 import { Skeleton } from '@/components/ui/Skeleton'
 import type { Club, ClubEvent, ClubNews, JoinRequest } from '@/types'
 import { toast } from 'sonner'
@@ -31,6 +31,7 @@ export default function DashboardPage() {
   const [nextEvents, setNextEvents] = useState<Record<string, ClubEvent>>({})
   const [pendingRequests, setPendingRequests] = useState<JoinRequest[]>([])
   const [issueReports, setIssueReports] = useState<{ id: string; reporter_name: string; reporter_email: string; message: string; status: string; created_at: string }[]>([])
+  const [showPending, setShowPending] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
 
@@ -164,16 +165,21 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-2xl mx-auto px-2 sm:px-0">
       <section className="mb-10">
         <div className="p-6 rounded-xl" style={{ background: 'rgba(33, 112, 228, 0.08)', border: '1px solid rgba(0, 88, 190, 0.1)' }}>
           <h2 className="text-3xl font-extrabold text-[#191c1d] tracking-tight leading-none mb-2" style={{ fontFamily: 'var(--font-manrope, sans-serif)' }}>
             Hi, {firstName}!
           </h2>
           {pendingRequests.length > 0 && (
-            <p className="font-medium text-[#0058be]">
-              You have {pendingRequests.length} pending club request{pendingRequests.length !== 1 ? 's' : ''}.
-            </p>
+            <button
+              onClick={() => setShowPending((v) => !v)}
+              className="flex items-center gap-2 font-medium text-[#0058be] hover:text-[#0047a0] transition-colors cursor-pointer"
+            >
+              <Clock className="w-4 h-4" />
+              You have {pendingRequests.length} pending club request{pendingRequests.length !== 1 ? 's' : ''}
+              {showPending ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
           )}
           {currentUser.role === 'advisor' && myClubs.length > 0 && (
             <p className="font-medium text-[#0058be]">
@@ -181,6 +187,34 @@ export default function DashboardPage() {
             </p>
           )}
         </div>
+
+        {showPending && pendingRequests.length > 0 && (
+          <div className="mt-4 rounded-xl bg-white border border-slate-200/60 overflow-hidden" style={{ boxShadow: '0 4px 16px rgba(15,23,42,0.04)' }}>
+            {(pendingRequests as (JoinRequest & { clubName?: string; clubIcon?: string })[]).map((req, i) => (
+              <Link key={req.id} href={`/clubs/${req.clubId}`}>
+                <div className={`flex items-center gap-4 px-5 py-4 hover:bg-slate-50 transition-colors ${i > 0 ? 'border-t border-slate-100' : ''}`}>
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-100 to-slate-50 border border-slate-200/60 flex items-center justify-center text-lg shrink-0">
+                    {req.clubIcon ?? '📌'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-800 truncate" style={{ fontFamily: 'var(--font-manrope)' }}>
+                      {req.clubName ?? 'Unknown Club'}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Requested {new Date(req.requestedAt).toLocaleDateString('en', { month: 'short', day: 'numeric' })}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-100">
+                      Pending
+                    </span>
+                    <ArrowRight className="w-4 h-4 text-slate-300" />
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </section>
 
       {loadError && (

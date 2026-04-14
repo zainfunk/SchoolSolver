@@ -62,9 +62,9 @@ export default function ChatPage() {
     : schoolClubs.filter((club) => myClubIds.includes(club.id) || club.advisorId === currentUser.id)
 
   return (
-    <div style={{ fontFamily: 'var(--font-inter)' }}>
+    <div className="max-w-4xl mx-auto px-2 sm:px-4" style={{ fontFamily: 'var(--font-inter)' }}>
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-10 pl-2 sm:pl-0">
         <h2
           className="text-3xl font-extrabold tracking-tight text-slate-900"
           style={{ fontFamily: 'var(--font-manrope)' }}

@@ -152,9 +152,9 @@ export default function ClubChatPage({ params }: { params: Promise<{ clubId: str
   }
 
   return (
-    <div className="-mx-8 -my-8 flex overflow-hidden" style={{ height: '100vh', fontFamily: 'var(--font-inter)' }}>
-      {/* Sidebar */}
-      <div className="w-72 shrink-0 bg-white border-r border-slate-200/60 flex flex-col overflow-hidden">
+    <div className="-mx-4 sm:-mx-6 md:-mx-10 -my-6 md:-my-8 flex overflow-hidden" style={{ height: 'calc(100vh - 3.5rem)', fontFamily: 'var(--font-inter)' }}>
+      {/* Sidebar — hidden on mobile */}
+      <div className="hidden md:flex w-72 shrink-0 bg-white border-r border-slate-200/60 flex-col overflow-hidden">
         <div className="px-5 py-5 border-b border-slate-100 shrink-0">
           <h3 className="text-sm font-bold text-slate-900" style={{ fontFamily: 'var(--font-manrope)' }}>Your Chats</h3>
           <p className="text-xs text-slate-400 mt-0.5">{accessibleClubs.length} conversation{accessibleClubs.length !== 1 ? 's' : ''}</p>

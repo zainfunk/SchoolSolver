@@ -49,11 +49,11 @@ function Toggle({
 function Section({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="rounded-2xl bg-white border border-slate-100 shadow-sm overflow-hidden">
-      <div className="px-5 py-3.5 border-b border-slate-100 flex items-center gap-3">
-        <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">
+      <div className="px-4 sm:px-6 py-4 border-b border-slate-100 flex items-center gap-3">
+        <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">
           {icon}
         </div>
-        <h2 className="font-bold text-slate-900 text-sm" style={{ fontFamily: 'var(--font-manrope)' }}>{title}</h2>
+        <h2 className="font-bold text-slate-900 text-[15px]" style={{ fontFamily: 'var(--font-manrope)' }}>{title}</h2>
       </div>
       <div className="divide-y divide-slate-50">{children}</div>
     </div>
@@ -72,7 +72,7 @@ function SettingRow({
   disabled?: boolean
 }) {
   return (
-    <div className={`flex items-center justify-between gap-4 px-5 py-3.5 ${disabled ? 'opacity-50' : ''}`}>
+    <div className={`flex items-center justify-between gap-4 px-4 sm:px-6 py-4 ${disabled ? 'opacity-50' : ''}`}>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-slate-800">{label}</p>
         {description && <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{description}</p>}
@@ -150,7 +150,7 @@ export default function SettingsPage() {
   if (!loaded) return null
 
   return (
-    <div className="max-w-2xl mx-auto space-y-5" style={{ fontFamily: 'var(--font-inter)' }}>
+    <div className="max-w-3xl mx-auto px-2 sm:px-4 md:px-0 space-y-6" style={{ fontFamily: 'var(--font-inter)' }}>
 
       {/* ── Page heading ── */}
       <div>
@@ -191,7 +191,7 @@ export default function SettingsPage() {
                 }
               />
               {!adminSettings.achievementsFeatureEnabled && (
-                <div className="px-5 py-2 flex items-center gap-2 text-xs text-amber-600 bg-amber-50/50">
+                <div className="px-4 sm:px-6 py-2.5 flex items-center gap-2 text-xs text-amber-600 bg-amber-50/50">
                   <Lock className="w-3.5 h-3.5 shrink-0" />
                   Disabled by admin — achievement visibility is turned off school-wide.
                 </div>
@@ -210,7 +210,7 @@ export default function SettingsPage() {
                 }
               />
               {!adminSettings.attendanceFeatureEnabled && (
-                <div className="px-5 py-2 flex items-center gap-2 text-xs text-amber-600 bg-amber-50/50">
+                <div className="px-4 sm:px-6 py-2.5 flex items-center gap-2 text-xs text-amber-600 bg-amber-50/50">
                   <Lock className="w-3.5 h-3.5 shrink-0" />
                   Disabled by admin — attendance visibility is turned off school-wide.
                 </div>
@@ -229,7 +229,7 @@ export default function SettingsPage() {
                 }
               />
               {!adminSettings.clubsFeatureEnabled && (
-                <div className="px-5 py-2 flex items-center gap-2 text-xs text-amber-600 bg-amber-50/50">
+                <div className="px-4 sm:px-6 py-2.5 flex items-center gap-2 text-xs text-amber-600 bg-amber-50/50">
                   <Lock className="w-3.5 h-3.5 shrink-0" />
                   Disabled by admin — club visibility is turned off school-wide.
                 </div>
@@ -252,7 +252,7 @@ export default function SettingsPage() {
             />
           )}
           {isStudent && !adminSettings.studentSocialsEnabled && (
-            <div className="px-5 py-2 flex items-center gap-2 text-xs text-amber-600 bg-amber-50/50">
+            <div className="px-4 sm:px-6 py-2.5 flex items-center gap-2 text-xs text-amber-600 bg-amber-50/50">
               <Lock className="w-3.5 h-3.5 shrink-0" />
               Disabled by admin — personal social media links are not permitted.
             </div>
@@ -263,7 +263,7 @@ export default function SettingsPage() {
       {/* ── Admin controls ── */}
       {isAdmin && (
         <Section title="Student Feature Controls" icon={<Shield className="w-4 h-4" />}>
-          <div className="px-5 py-2.5 bg-rose-50/80 border-b border-rose-100">
+          <div className="px-4 sm:px-6 py-3 bg-rose-50/80 border-b border-rose-100">
             <p className="text-xs text-rose-700 font-medium">
               These settings apply to all students school-wide.
             </p>
@@ -317,7 +317,7 @@ export default function SettingsPage() {
 
       {/* ── Report an issue ── */}
       <Section title="Report an Issue" icon={<AlertCircle className="w-4 h-4" />}>
-        <div className="px-5 py-4 space-y-3">
+        <div className="px-4 sm:px-6 py-5 space-y-3">
           <p className="text-sm text-slate-600">
             Your report goes to{' '}
             <span className="font-semibold text-slate-800">{schoolPrincipal ?? 'the admin'}</span>.

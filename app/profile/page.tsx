@@ -264,32 +264,32 @@ export default function ProfilePage() {
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.2),transparent_70%)]" />
         </div>
 
-        {/* Profile info — avatar + text side by side */}
-        <div className="px-8 pb-6 -mt-10">
-          <div className="flex items-end gap-5 mb-5">
+        {/* Profile info — avatar + text side by side, centered */}
+        <div className="px-4 sm:px-8 py-6">
+          <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
             <div className="rounded-2xl p-1 bg-white shadow-lg shadow-slate-900/10 shrink-0">
               <Avatar name={profileUser.name} size="lg" className="!w-20 !h-20 !text-xl !rounded-xl" />
             </div>
-            <div className="pb-1 min-w-0">
-              <div className="flex items-center gap-3 mb-1">
+            <div className="min-w-0 text-center sm:text-left">
+              <div className="flex items-center justify-center sm:justify-start gap-3 mb-1.5">
                 {canEdit ? (
                   <Input
                     value={nameInput}
                     onChange={(e) => setNameInput(e.target.value)}
                     onBlur={saveName}
                     onKeyDown={(e) => e.key === 'Enter' && saveName()}
-                    className="h-auto text-3xl font-extrabold tracking-tight max-w-md border-none shadow-none px-0 py-0 focus-visible:ring-0"
+                    className="h-auto text-2xl sm:text-3xl font-extrabold tracking-tight max-w-md border-none shadow-none px-0 py-0 focus-visible:ring-0"
                     style={{ fontFamily: 'var(--font-manrope)' }}
                   />
                 ) : (
-                  <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 truncate"
+                  <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 truncate"
                     style={{ fontFamily: 'var(--font-manrope)' }}>
                     {profileUser.name}
                   </h1>
                 )}
                 <BadgeCheck className="w-6 h-6 text-indigo-500 shrink-0" />
               </div>
-              <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center justify-center sm:justify-start gap-3 flex-wrap">
                 <span className={`text-xs font-semibold px-3 py-0.5 rounded-full border ${ROLE_BADGE[profileUser.role]}`}>
                   {ROLE_LABEL[profileUser.role]}
                 </span>

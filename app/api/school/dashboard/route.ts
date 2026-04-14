@@ -150,12 +150,15 @@ export async function GET() {
     autoAccept: row.auto_accept ?? false,
   }))
 
-  // Pending join requests
+  // Pending join requests — include club name for display
   const pendingRequests = (joinRequestRows ?? []).map((r) => {
     const row = r as Record<string, unknown>
+    const clubRow = allClubs.find((c) => c.id === row.club_id)
     return {
       id: row.id, clubId: row.club_id, userId: row.user_id,
       requestedAt: row.requested_at, status: row.status,
+      clubName: clubRow?.name ?? 'Unknown Club',
+      clubIcon: clubRow?.icon_url ?? undefined,
     }
   })
 
