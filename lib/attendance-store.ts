@@ -49,13 +49,17 @@ export async function getRecordsByClub(clubId: string): Promise<AttendanceRecord
 }
 
 export async function upsertRecord(
-  clubId: string, userId: string, meetingDate: string, present: boolean
+  clubId: string, userId: string, meetingDate: string, present: boolean,
+  durationMinutes?: number,
 ): Promise<string> {
   const id = `att-dyn-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+  const row: Record<string, unknown> = {
+    id, club_id: clubId, user_id: userId, meeting_date: meetingDate, present,
+  }
+  if (typeof durationMinutes === 'number') row.duration_minutes = durationMinutes
   const { data } = await supabase
     .from('attendance_records')
-    .upsert({ id, club_id: clubId, user_id: userId, meeting_date: meetingDate, present },
-             { onConflict: 'club_id,user_id,meeting_date' })
+    .upsert(row, { onConflict: 'club_id,user_id,meeting_date' })
     .select('id')
     .maybeSingle()
   return data?.id ?? id
@@ -84,6 +88,7 @@ function mapRecord(r: Record<string, unknown>): AttendanceRecord {
     userId: r.user_id as string,
     meetingDate: r.meeting_date as string,
     present: r.present as boolean,
+    durationMinutes: (r.duration_minutes as number | null) ?? undefined,
   }
 }
 

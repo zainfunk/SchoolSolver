@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useMockAuth } from '@/lib/mock-auth'
 import { getSessionById, haversineMeters, markSessionCheckin, upsertRecord } from '@/lib/attendance-store'
+import { computeMeetingDuration } from '@/lib/rewards/hours'
 import { supabase } from '@/lib/supabase'
 import Avatar from '@/components/Avatar'
 import { AlertTriangle, CheckCircle, Clock, MapPin, XCircle } from 'lucide-react'
@@ -116,8 +117,19 @@ function AttendContent() {
       }
     }
 
-    await upsertRecord(session.clubId, currentUser.id, session.meetingDate, true)
+    const durationMinutes = await computeMeetingDuration(session.clubId, session.meetingDate)
+    await upsertRecord(session.clubId, currentUser.id, session.meetingDate, true, durationMinutes)
     await markSessionCheckin(token, currentUser.id)
+    // Award XP and re-evaluate badges (best-effort; UI proceeds either way).
+    try {
+      await fetch('/api/rewards/check-in', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clubId: session.clubId, durationMinutes }),
+      })
+    } catch (err) {
+      console.error('reward award failed', err)
+    }
     setStatus('success')
   }
 

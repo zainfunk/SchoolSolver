@@ -1187,3 +1187,42 @@ CREATE TABLE IF NOT EXISTS payment_events (
 CREATE INDEX IF NOT EXISTS idx_subscriptions_school ON subscriptions(school_id);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_stripe_sub ON subscriptions(stripe_subscription_id);
 CREATE INDEX IF NOT EXISTS idx_payment_events_school ON payment_events(school_id, created_at DESC);
+
+-- ============================================================
+-- Rewards, Achievements & Hours Tracking
+-- ============================================================
+
+-- Per check-in duration (auto-derived from meeting_times.start/end at check-in time)
+alter table attendance_records add column if not exists duration_minutes int default 60;
+
+-- Advisor-editable +/- delta on the auto-tracked hours per (member, club)
+alter table memberships add column if not exists hours_adjustment_minutes int default 0;
+
+-- Running XP counter (level is derived from this)
+alter table users add column if not exists xp_total int default 0;
+
+-- Admin feature toggles for the rewards subsystems
+alter table admin_settings add column if not exists points_enabled boolean default true;
+alter table admin_settings add column if not exists streaks_enabled boolean default true;
+alter table admin_settings add column if not exists leaderboards_enabled boolean default true;
+alter table admin_settings add column if not exists hours_tracking_enabled boolean default true;
+
+-- Earned badges (catalog lives in code; this table only records the unlock event)
+create table if not exists user_badges (
+  id text primary key default gen_random_uuid()::text,
+  user_id text not null references users(id) on delete cascade,
+  badge_key text not null,
+  earned_at timestamptz default now(),
+  club_id text references clubs(id) on delete set null,
+  unique(user_id, badge_key, club_id)
+);
+create index if not exists user_badges_user_idx on user_badges(user_id);
+
+alter table user_badges enable row level security;
+
+drop policy if exists user_badges_select on user_badges;
+create policy user_badges_select on user_badges
+  for select to authenticated
+  using (app.user_in_scope(user_id));
+
+-- Writes are server-only via service role; no insert/update policy granted to authenticated.

@@ -7,6 +7,7 @@ import { useMockAuth } from '@/lib/mock-auth'
 import {
   saveSession, upsertRecord,
 } from '@/lib/attendance-store'
+import { computeMeetingDuration } from '@/lib/rewards/hours'
 import { Input } from '@/components/ui/input'
 import {
   Users, Clock, MapPin, Globe, Crown, CheckCircle, XCircle,
@@ -18,6 +19,7 @@ import Avatar from '@/components/Avatar'
 import ConfirmDialog from '@/components/ConfirmDialog'
 import ClubNews from '@/components/clubs/ClubNews'
 import ClubEvents from '@/components/clubs/ClubEvents'
+import MemberHoursTable from '@/components/clubs/MemberHoursTable'
 import { toast } from 'sonner'
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -524,7 +526,23 @@ export default function ClubDetailPage({ params }: PageProps) {
   // --- Manual attendance handlers ---
 
   function setManualAttendance(userId: string, present: boolean) {
-    upsertRecord(id, userId, manualDate, present) // async write, fire-and-forget
+    // Compute the meeting duration once and use it for both the persisted row
+    // and the rewards award. Best-effort — UI proceeds either way.
+    void (async () => {
+      const minutes = await computeMeetingDuration(id, manualDate)
+      await upsertRecord(id, userId, manualDate, present, minutes)
+      if (present) {
+        try {
+          await fetch('/api/rewards/check-in', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clubId: id, durationMinutes: minutes, targetUserId: userId }),
+          })
+        } catch (err) {
+          console.error('reward award failed', err)
+        }
+      }
+    })()
     setAttendanceRecords((prev) => {
       const next = [...prev]
       const idx = next.findIndex(
@@ -1283,6 +1301,14 @@ export default function ClubDetailPage({ params }: PageProps) {
               </div>
             )}
           </div>
+        )}
+
+        {/* Member hours — advisor only. Hours auto-derived from check-ins; advisor can apply +/- adjustments. */}
+        {isAdvisor && (
+          <MemberHoursTable
+            clubId={id}
+            members={members.filter((m): m is User => Boolean(m)).map((m) => ({ id: m.id, name: m.name }))}
+          />
         )}
 
         {/* Elections */}

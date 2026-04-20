@@ -38,6 +38,7 @@ export interface User {
   role: Role
   avatarUrl?: string
   schoolId?: string
+  xpTotal?: number
 }
 
 export interface LeadershipPosition {
@@ -83,6 +84,7 @@ export interface Membership {
   clubId: string
   userId: string
   joinedAt: string
+  hoursAdjustmentMinutes?: number
 }
 
 export interface ClubEvent {
@@ -112,6 +114,15 @@ export interface AttendanceRecord {
   userId: string
   meetingDate: string
   present: boolean
+  durationMinutes?: number
+}
+
+export interface UserBadge {
+  id: string
+  userId: string
+  badgeKey: string
+  earnedAt: string
+  clubId?: string
 }
 
 // --- Polls & Elections ---

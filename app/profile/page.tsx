@@ -13,10 +13,13 @@ import { AttendanceRecord, Club, User } from '@/types'
 import Avatar from '@/components/Avatar'
 import { Input } from '@/components/ui/input'
 import AttendanceCalendar from '@/components/profile/AttendanceCalendar'
+import RewardsSummary from '@/components/profile/RewardsSummary'
+import BadgeGrid from '@/components/profile/BadgeGrid'
+import { computeUserTotalHours, formatHours, MemberHours } from '@/lib/rewards/hours'
 import {
   Pencil, Check, X, Plus, Trash2,
   ExternalLink, EyeOff, Users, Mail, BadgeCheck,
-  Trophy, Star, Flame, BookOpen, Award, Zap, AlertCircle,
+  Star, Flame, BookOpen, Award, Clock, AlertCircle,
 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/Skeleton'
 
@@ -31,54 +34,6 @@ const ROLE_LABEL: Record<string, string> = {
 }
 
 type Tab = 'overview' | 'clubs' | 'attendance' | 'achievements'
-
-function computeAchievements(
-  memberClubs: Club[],
-  allRecords: AttendanceRecord[],
-) {
-  const achievements: { icon: React.ReactNode; title: string; desc: string; earned: boolean }[] = []
-  const totalMeetings = allRecords.length
-  const presentCount = allRecords.filter((r) => r.present).length
-  const pct = totalMeetings > 0 ? presentCount / totalMeetings : 0
-
-  achievements.push({
-    icon: <BookOpen className="w-5 h-5" />,
-    title: 'Club Member',
-    desc: 'Joined your first club',
-    earned: memberClubs.length >= 1,
-  })
-  achievements.push({
-    icon: <Users className="w-5 h-5" />,
-    title: 'Multitasker',
-    desc: 'Active in 2 or more clubs',
-    earned: memberClubs.length >= 2,
-  })
-  achievements.push({
-    icon: <Star className="w-5 h-5" />,
-    title: 'Leader',
-    desc: 'Hold a leadership position',
-    earned: memberClubs.some((c) => c.leadershipPositions.some((lp) => lp.userId !== undefined)),
-  })
-  achievements.push({
-    icon: <Flame className="w-5 h-5" />,
-    title: 'Committed',
-    desc: 'Attended 80%+ of meetings',
-    earned: pct >= 0.8 && totalMeetings > 0,
-  })
-  achievements.push({
-    icon: <Trophy className="w-5 h-5" />,
-    title: 'Perfect Attendance',
-    desc: 'Never missed a meeting',
-    earned: totalMeetings > 0 && presentCount === totalMeetings,
-  })
-  achievements.push({
-    icon: <Zap className="w-5 h-5" />,
-    title: 'High Participation',
-    desc: 'Attended 10+ meetings total',
-    earned: presentCount >= 10,
-  })
-  return achievements
-}
 
 export default function ProfilePage() {
   const { currentUser } = useMockAuth()
@@ -199,8 +154,25 @@ export default function ProfilePage() {
   const presentCount = allAttendanceRecords.filter((r) => r.present).length
   const attendancePct = totalMeetings > 0 ? Math.round((presentCount / totalMeetings) * 100) : 0
 
-  const achievements = computeAchievements(memberClubs, allAttendanceRecords)
-  const earnedCount = achievements.filter((a) => a.earned).length
+  const memberClubIds = memberClubs.map((c) => c.id)
+
+  // Total hours (auto + advisor adjustment) across every club the user belongs to.
+  const [totalHours, setTotalHours] = useState<MemberHours>({ autoMinutes: 0, adjustmentMinutes: 0, totalMinutes: 0 })
+  useEffect(() => {
+    if (!profileUser.id) return
+    void computeUserTotalHours(profileUser.id).then(setTotalHours)
+  }, [profileUser.id, supabaseAttendance.length, memberClubs.length])
+
+  // Earned badge count for the stats row
+  const [earnedCount, setEarnedCount] = useState(0)
+  useEffect(() => {
+    if (!profileUser.id) return
+    supabase.from('user_badges').select('badge_key', { count: 'exact', head: true }).eq('user_id', profileUser.id).then(({ count }) => {
+      setEarnedCount(count ?? 0)
+    })
+  }, [profileUser.id])
+
+  const adminSettings = getAdminSettings()
 
   const [tab, setTab] = useState<Tab>('overview')
 
@@ -329,8 +301,12 @@ export default function ProfilePage() {
         {[
           { value: displayClubs.length, label: 'Clubs', icon: <Users className="w-4 h-4" />, color: 'text-indigo-600', bg: 'bg-indigo-50' },
           ...(profileUser.role === 'student' ? [
-            { value: `${attendancePct}%`, label: 'Attendance', icon: <Flame className="w-4 h-4" />, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-            { value: earnedCount, label: 'Achievements', icon: <Award className="w-4 h-4" />, color: 'text-amber-600', bg: 'bg-amber-50' },
+            ...(adminSettings.hoursTrackingEnabled
+              ? [{ value: formatHours(totalHours.totalMinutes), label: 'Total hours', icon: <Clock className="w-4 h-4" />, color: 'text-cyan-600', bg: 'bg-cyan-50' }]
+              : [{ value: `${attendancePct}%`, label: 'Attendance', icon: <Flame className="w-4 h-4" />, color: 'text-emerald-600', bg: 'bg-emerald-50' }]),
+            ...(adminSettings.achievementsFeatureEnabled
+              ? [{ value: earnedCount, label: 'Badges', icon: <Award className="w-4 h-4" />, color: 'text-amber-600', bg: 'bg-amber-50' }]
+              : []),
           ] : []),
           { value: memberClubs.filter((c) => c.leadershipPositions.some((lp) => lp.userId === profileUser.id)).length, label: 'Leadership', icon: <Star className="w-4 h-4" />, color: 'text-violet-600', bg: 'bg-violet-50' },
         ].map(({ value, label, icon, color, bg }) => (
@@ -434,6 +410,11 @@ export default function ProfilePage() {
               </div>
             )}
           </div>
+          )}
+
+          {/* Rewards summary (students only) — gated by admin settings inside the component */}
+          {profileUser.role === 'student' && (
+            <RewardsSummary userId={profileUser.id} clubIds={memberClubIds} />
           )}
 
           {/* Activity Snapshot (students only, sidebar) */}
@@ -623,52 +604,7 @@ export default function ProfilePage() {
           )}
 
           {/* ── Tab: Achievements ── */}
-          {tab === 'achievements' && (
-            <div className="space-y-4">
-              <div className="rounded-2xl bg-white border border-slate-200/60 p-6 flex items-center gap-5"
-                style={{ boxShadow: '0 4px 24px rgba(15,23,42,0.04)' }}>
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shrink-0 shadow-lg shadow-indigo-500/20">
-                  <Award className="w-7 h-7 text-white" />
-                </div>
-                <div>
-                  <p className="text-3xl font-bold text-slate-900" style={{ fontFamily: 'var(--font-manrope)' }}>
-                    {earnedCount} <span className="text-lg text-slate-400 font-medium">/ {achievements.length}</span>
-                  </p>
-                  <p className="text-sm text-slate-500">Achievements earned</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {achievements.map((a) => (
-                  <div key={a.title}
-                    className={`rounded-2xl p-5 flex items-start gap-4 transition-all border ${
-                      a.earned
-                        ? 'bg-white border-slate-200/60'
-                        : 'bg-slate-50 border-slate-100 opacity-50'
-                    }`}
-                    style={a.earned ? { boxShadow: '0 4px 24px rgba(15,23,42,0.04)' } : {}}>
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                      a.earned ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-100 text-slate-400'
-                    }`}>
-                      {a.icon}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-slate-900 leading-tight"
-                        style={{ fontFamily: 'var(--font-manrope)' }}>
-                        {a.title}
-                      </p>
-                      <p className="text-xs text-slate-500 mt-0.5 leading-tight">{a.desc}</p>
-                      {a.earned && (
-                        <span className="inline-flex items-center gap-0.5 text-[10px] font-bold uppercase tracking-wider mt-1.5 text-emerald-600">
-                          <Check className="w-3 h-3" /> Earned
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {tab === 'achievements' && <BadgeGrid userId={profileUser.id} />}
         </div>
       </div>
     </div>

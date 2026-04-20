@@ -4,7 +4,8 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useClerk } from '@clerk/nextjs'
 import { useMockAuth } from '@/lib/mock-auth'
-import { Sparkles, LayoutDashboard, Calendar, FileText, Compass, User, ShieldCheck, MessageSquare, Settings, LogOut, Globe, CreditCard, X } from 'lucide-react'
+import { Sparkles, LayoutDashboard, Calendar, FileText, Compass, User, ShieldCheck, MessageSquare, Settings, LogOut, Globe, CreditCard, X, Trophy } from 'lucide-react'
+import { fetchAdminSettings, getAdminSettings } from '@/lib/settings-store'
 import Avatar from '@/components/Avatar'
 import { HelpButton } from '@/components/HelpTour'
 import { useState, useEffect } from 'react'
@@ -16,6 +17,7 @@ const NAV_ITEMS = [
   { href: '/chat',       icon: MessageSquare,   label: 'Chat',       roles: ['student', 'advisor', 'admin'],                tourId: 'tour-nav-chat' },
   { href: '/elections',  icon: FileText,        label: 'Elections',  roles: ['student', 'advisor', 'admin'],                tourId: 'tour-nav-elections' },
   { href: '/clubs',      icon: Compass,         label: 'All Clubs',  roles: ['student', 'advisor', 'admin'],                tourId: 'tour-nav-clubs' },
+  { href: '/leaderboard', icon: Trophy,         label: 'Leaderboard', roles: ['student', 'advisor', 'admin'],                tourId: 'tour-nav-leaderboard' },
   { href: '/profile',    icon: User,            label: 'Profile',    roles: ['student', 'advisor', 'admin', 'superadmin'],  tourId: 'tour-nav-profile' },
   { href: '/admin',      icon: ShieldCheck,     label: 'Admin',      roles: ['admin'],                                      tourId: 'tour-nav-admin' },
   { href: '/admin/billing', icon: CreditCard,   label: 'Billing',    roles: ['admin'],                                      tourId: 'tour-nav-billing' },
@@ -32,7 +34,16 @@ export default function Sidebar() {
     setMobileOpen(false)
   }, [pathname])
 
-  const visibleItems = NAV_ITEMS.filter((item) => item.roles.includes(actualUser.role))
+  const [leaderboardEnabled, setLeaderboardEnabled] = useState(getAdminSettings().leaderboardsEnabled)
+  useEffect(() => {
+    void fetchAdminSettings().then((s) => setLeaderboardEnabled(s.leaderboardsEnabled))
+  }, [])
+
+  const visibleItems = NAV_ITEMS.filter((item) => {
+    if (!item.roles.includes(actualUser.role)) return false
+    if (item.href === '/leaderboard' && !leaderboardEnabled) return false
+    return true
+  })
 
   function isActive(href: string) {
     if (href === '/profile') return pathname === '/profile' || pathname.startsWith('/profile/')

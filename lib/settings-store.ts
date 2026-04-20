@@ -6,6 +6,10 @@ export interface AdminSettings {
   attendanceFeatureEnabled: boolean
   clubsFeatureEnabled: boolean
   studentSocialsEnabled: boolean
+  pointsEnabled: boolean
+  streaksEnabled: boolean
+  leaderboardsEnabled: boolean
+  hoursTrackingEnabled: boolean
 }
 
 const ADMIN_DEFAULTS: AdminSettings = {
@@ -13,6 +17,10 @@ const ADMIN_DEFAULTS: AdminSettings = {
   attendanceFeatureEnabled: true,
   clubsFeatureEnabled: true,
   studentSocialsEnabled: true,
+  pointsEnabled: true,
+  streaksEnabled: true,
+  leaderboardsEnabled: true,
+  hoursTrackingEnabled: true,
 }
 
 // Sync read from localStorage cache (used for immediate render, no flicker)
@@ -152,4 +160,21 @@ export function canViewClubs(viewerId: string, targetId: string, viewerRole: str
   const admin = getAdminSettings()
   if (!admin.clubsFeatureEnabled) return false
   return getUserPrivacy(targetId).clubsPublic
+}
+
+// Rewards subsystems are gated by admin toggles only (no per-user privacy yet).
+export function canViewLeaderboard(): boolean {
+  return getAdminSettings().leaderboardsEnabled
+}
+
+export function isHoursTrackingEnabled(): boolean {
+  return getAdminSettings().hoursTrackingEnabled
+}
+
+export function isPointsEnabled(): boolean {
+  return getAdminSettings().pointsEnabled
+}
+
+export function isStreaksEnabled(): boolean {
+  return getAdminSettings().streaksEnabled
 }
