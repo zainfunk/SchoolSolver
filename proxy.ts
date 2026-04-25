@@ -15,7 +15,8 @@ const isPublicRoute = createRouteMatcher([
   '/api/setup/(.*)',
   '/api/join',
   '/api/onboard',
-  '/api/webhooks/(.*)',
+  // /api/webhooks/* removed in W2.6 -- duplicate Stripe handler that
+  // accepted unsigned events when STRIPE_WEBHOOK_SECRET was unset (C-6).
   '/api/stripe/webhook',
 ])
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getStripe } from '@/lib/stripe'
+import { getStripe, requireWebhookSecret } from '@/lib/stripe'
 import { createServiceClient } from '@/lib/supabase'
 import type Stripe from 'stripe'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -12,13 +12,26 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Missing signature' }, { status: 400 })
   }
 
+  // W2.6: requireWebhookSecret throws in production if STRIPE_WEBHOOK_SECRET
+  // is unset. The previous code did `process.env.STRIPE_WEBHOOK_SECRET!`,
+  // which would have constructEvent reject with "missing secret" -- but the
+  // sibling handler at /api/webhooks/stripe (now deleted) would silently
+  // parse unsigned events. Belt and suspenders.
+  let secret: string
+  try {
+    secret = requireWebhookSecret()
+  } catch (err) {
+    console.error(err)
+    return NextResponse.json({ error: 'Webhook misconfigured' }, { status: 500 })
+  }
+
+  if (!secret) {
+    return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 })
+  }
+
   let event: Stripe.Event
   try {
-    event = getStripe().webhooks.constructEvent(
-      body,
-      signature,
-      process.env.STRIPE_WEBHOOK_SECRET!,
-    )
+    event = getStripe().webhooks.constructEvent(body, signature, secret)
   } catch (err) {
     console.error('Stripe webhook signature verification failed:', err)
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
