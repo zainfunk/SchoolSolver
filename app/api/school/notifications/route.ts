@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { createAuthedServerClient } from '@/lib/supabase'
+import { createAuthedServerClient } from '@/lib/supabase-server'
 
 export const dynamic = 'force-dynamic'
 

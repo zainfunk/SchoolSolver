@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { createAuthedServerClient } from '@/lib/supabase'
+import { createAuthedServerClient } from '@/lib/supabase-server'
 import { profileLimiter } from '@/lib/rate-limit'
 import { ProfilePatchSchema, badRequest } from '@/lib/schemas'
 
