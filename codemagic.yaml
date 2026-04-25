@@ -25,9 +25,14 @@ workflows:
         script: |
           npm ci
 
-      - name: Build Next.js app
+      - name: Build Next.js app (production -- strips dev-only routes)
         script: |
-          npm run build
+          # build:prod composes:
+          #   1. node scripts/strip-dev-routes.mjs   (removes app/api/dev/, /app/dev/, etc.)
+          #   2. next build
+          #   3. node scripts/check-no-dev-routes.mjs (fails the build if any dev-route artifact survived)
+          # See finding W1.6 in docs/security/ClubIt-Security-Assessment.md.
+          NODE_ENV=production npm run build:prod
 
       - name: Capacitor sync iOS
         # APP_SERVER_URL env var is read by capacitor.config.ts at sync time
