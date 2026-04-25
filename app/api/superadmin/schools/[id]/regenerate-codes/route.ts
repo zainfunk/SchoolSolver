@@ -26,11 +26,26 @@ export async function POST(
   const adminCode = generateInviteCode('ADM')
   const advisorCode = generateInviteCode('ADV')
 
+  // W2.5: clear single-use markers so the fresh admin/advisor codes are
+  // redeemable, and reset expiry to default (14 days).
+  const expiry = new Date()
+  expiry.setDate(expiry.getDate() + 14)
+  const expiresAt = expiry.toISOString()
+
   // Try updating all three codes. If advisor_invite_code column doesn't exist yet
   // (migration not applied), fall back to updating just student and admin codes.
   const { error } = await db
     .from('schools')
-    .update({ student_invite_code: studentCode, admin_invite_code: adminCode, advisor_invite_code: advisorCode })
+    .update({
+      student_invite_code: studentCode,
+      admin_invite_code: adminCode,
+      advisor_invite_code: advisorCode,
+      student_code_expires_at: expiresAt,
+      admin_code_expires_at:   expiresAt,
+      advisor_code_expires_at: expiresAt,
+      admin_code_used_at:   null,
+      advisor_code_used_at: null,
+    })
     .eq('id', id)
 
   if (error) {
