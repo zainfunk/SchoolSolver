@@ -1,9 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth, clerkClient } from '@clerk/nextjs/server'
 import { createServiceClient } from '@/lib/supabase'
-import { generateInviteCode } from '@/lib/schools-store'
 import { sanitizeText } from '@/lib/sanitize'
 
+/**
+ * POST /api/onboard
+ *
+ * W2.3 (finding C-3): self-service school registration NO LONGER auto-grants
+ * admin. Instead it creates a school in status='pending' with the
+ * requester's user id captured in `requested_admin_user_id`. A superadmin
+ * has to explicitly approve via /api/superadmin/schools/[id]/approve before
+ * the requester's role flips to 'admin' and invite codes are generated.
+ *
+ * The requester's `users.school_id` is set to the pending school so the
+ * existing routing (in mock-auth.tsx) sends them to /onboard/pending
+ * while they wait. Their role stays 'student' (the default seeded by
+ * /api/user/sync at first login) until approval.
+ */
 export async function POST(request: NextRequest) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -19,7 +32,7 @@ export async function POST(request: NextRequest) {
   const client = await clerkClient()
   const clerkUser = await client.users.getUser(userId)
 
-  // Check if this user already has a pending/active school
+  // Refuse if the user already belongs to (or is requesting admin of) a school.
   const { data: existingUser } = await db
     .from('users')
     .select('school_id')
@@ -27,11 +40,27 @@ export async function POST(request: NextRequest) {
     .maybeSingle()
 
   if (existingUser?.school_id) {
-    return NextResponse.json({ error: 'You are already enrolled in a school' }, { status: 409 })
+    return NextResponse.json(
+      { error: 'You are already enrolled in a school' },
+      { status: 409 },
+    )
   }
 
-  // Auto-approve: create as active with invite codes ready to share.
-  // The onboarding user becomes the admin immediately; superadmin can still suspend later.
+  // Ensure the user row exists before we point school.requested_admin_user_id
+  // at it (FK constraint).
+  await db.from('users').upsert(
+    {
+      id: userId,
+      name: clerkUser.fullName ?? clerkUser.username ?? contactName.trim(),
+      email: clerkUser.primaryEmailAddress?.emailAddress ?? contactEmail.trim().toLowerCase(),
+      role: 'student',
+      school_id: null,
+    },
+    { onConflict: 'id', ignoreDuplicates: true },
+  )
+
+  // Create the school in status='pending'. NO invite codes, NO setup
+  // token, NO admin grant. All of those happen on approval.
   const { data: school, error } = await db
     .from('schools')
     .insert({
@@ -39,48 +68,39 @@ export async function POST(request: NextRequest) {
       district: district?.trim() ? sanitizeText(district.trim()) : null,
       contact_name: sanitizeText(contactName.trim()),
       contact_email: contactEmail.trim().toLowerCase(),
-      status: 'active',
-      student_invite_code: generateInviteCode('STU'),
-      admin_invite_code: generateInviteCode('ADM'),
-      advisor_invite_code: generateInviteCode('ADV'),
+      status: 'pending',
+      requested_admin_user_id: userId,
     })
     .select()
     .single()
 
   if (error) {
     console.error('onboard error', error)
-    return NextResponse.json({ error: 'Failed to submit request' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Failed to submit registration request. Please try again.' },
+      { status: 500 },
+    )
   }
 
-  // Tag the submitting user as admin of this school (pending)
+  // Tag the requester with this pending school so the routing logic
+  // sends them to /onboard/pending. Role stays 'student'; it flips to
+  // 'admin' only when the superadmin approves.
   const { error: userError } = await db
     .from('users')
-    .upsert(
-      {
-        id: userId,
-        name: clerkUser.fullName ?? clerkUser.username ?? contactName.trim(),
-        email: clerkUser.primaryEmailAddress?.emailAddress ?? contactEmail.trim().toLowerCase(),
-        school_id: school.id,
-        role: 'admin',
-      },
-      { onConflict: 'id' }
-    )
+    .update({ school_id: school.id })
+    .eq('id', userId)
 
   if (userError) {
-    console.error('onboard user save error', userError)
-    return NextResponse.json({ error: 'Failed to save your school admin role' }, { status: 500 })
+    console.error('onboard user update error', userError)
+    return NextResponse.json(
+      { error: 'Submission saved but we could not link your account to it. Please contact support.' },
+      { status: 500 },
+    )
   }
 
-  try {
-    await client.users.updateUserMetadata(userId, {
-      publicMetadata: {
-        ...clerkUser.publicMetadata,
-        role: 'admin',
-      },
-    })
-  } catch (metadataError) {
-    console.warn('onboard metadata sync warning', metadataError)
-  }
-
-  return NextResponse.json({ schoolId: school.id })
+  return NextResponse.json({
+    schoolId: school.id,
+    status: 'pending',
+    message: 'Your school registration is pending review. We’ll email when it’s approved.',
+  })
 }
