@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth, clerkClient } from '@clerk/nextjs/server'
 import { createServiceClient } from '@/lib/supabase'
 import { generateInviteCode, generateSetupToken, setupTokenExpiresAt } from '@/lib/schools-store'
+import { audit } from '@/lib/audit'
 
 async function requireSuperAdmin() {
   const { userId } = await auth()
@@ -34,7 +35,7 @@ async function requireSuperAdmin() {
  * Clerk publicMetadata to match.
  */
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const userId = await requireSuperAdmin()
@@ -117,6 +118,17 @@ export async function POST(
       console.warn('approve: clerk metadata sync warning', metaErr)
     }
   }
+
+  await audit({
+    action: 'school.approved',
+    targetTable: 'schools',
+    targetId: id,
+    before: { status: 'pending' },
+    after:  { status: 'active', promotedAdminId },
+    actorUserId: userId,
+    actorRole: 'superadmin',
+    request,
+  })
 
   return NextResponse.json({
     school: data,

@@ -3,6 +3,7 @@ import { auth, clerkClient } from '@clerk/nextjs/server'
 import { createServiceClient } from '@/lib/supabase'
 import { sanitizeText } from '@/lib/sanitize'
 import { onboardLimiter } from '@/lib/rate-limit'
+import { audit } from '@/lib/audit'
 
 /**
  * POST /api/onboard
@@ -107,6 +108,15 @@ export async function POST(request: NextRequest) {
       { status: 500 },
     )
   }
+
+  await audit({
+    action: 'school.requested',
+    targetTable: 'schools',
+    targetId: school.id,
+    after: { name: school.name, contactEmail: school.contact_email, status: 'pending' },
+    actorUserId: userId,
+    request,
+  })
 
   return NextResponse.json({
     schoolId: school.id,

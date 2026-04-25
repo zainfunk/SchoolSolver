@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth, clerkClient } from '@clerk/nextjs/server'
 import { createServiceClient } from '@/lib/supabase'
 import { Role } from '@/types'
+import { audit } from '@/lib/audit'
 
 const MANAGED_ROLES: Role[] = ['student', 'advisor', 'admin']
 
@@ -92,6 +93,18 @@ export async function POST(
     console.error('role update error', error)
     return NextResponse.json({ error: 'Failed to update role' }, { status: 500 })
   }
+
+  // W3.3: audit role change (privilege-bearing).
+  await audit({
+    action: 'user.role_changed',
+    targetTable: 'users',
+    targetId: target.id,
+    before: { role: target.role },
+    after:  { role },
+    actorUserId: requester.userId,
+    actorRole: requester.role,
+    request,
+  })
 
   try {
     const client = await clerkClient()

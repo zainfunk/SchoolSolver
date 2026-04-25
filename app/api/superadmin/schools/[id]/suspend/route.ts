@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth, clerkClient } from '@clerk/nextjs/server'
 import { createServiceClient } from '@/lib/supabase'
+import { audit } from '@/lib/audit'
 
 async function requireSuperAdmin() {
   const { userId } = await auth()
@@ -12,7 +13,7 @@ async function requireSuperAdmin() {
 }
 
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const userId = await requireSuperAdmin()
@@ -41,6 +42,17 @@ export async function POST(
     .eq('id', id)
 
   if (error) return NextResponse.json({ error: 'Failed to update status' }, { status: 500 })
+
+  await audit({
+    action: newStatus === 'active' ? 'school.reactivated' : 'school.suspended',
+    targetTable: 'schools',
+    targetId: id,
+    before: { status: school.status },
+    after:  { status: newStatus },
+    actorUserId: userId,
+    actorRole: 'superadmin',
+    request,
+  })
 
   return NextResponse.json({ status: newStatus })
 }
