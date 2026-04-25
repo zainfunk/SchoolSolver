@@ -1,0 +1,98 @@
+name: security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Runs on every PR to main and every push to main. Blocks merge until
+# every job is green. See docs/security/ClubIt-Security-Assessment.md
+# for the findings each job protects against.
+jobs:
+  audit:
+    name: npm audit (high+critical block)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Block on high or critical vulns
+        run: |
+          # Allow moderate (we track residuals in
+          # docs/security/DEPENDENCY_RESIDUALS.md). Block high+critical.
+          OUT=$(npm audit --omit=dev --audit-level=high --json || true)
+          HIGH=$(echo "$OUT" | jq '.metadata.vulnerabilities.high // 0')
+          CRIT=$(echo "$OUT" | jq '.metadata.vulnerabilities.critical // 0')
+          echo "high=$HIGH critical=$CRIT"
+          if [ "$HIGH" -gt 0 ] || [ "$CRIT" -gt 0 ]; then
+            echo "::error::High or critical vulnerabilities present; review and fix or document in DEPENDENCY_RESIDUALS.md"
+            npm audit --omit=dev || true
+            exit 1
+          fi
+
+  gitleaks:
+    name: gitleaks (secret scan)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history for the leak scan
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  unit-tests:
+    name: vitest security suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+        env:
+          # In-memory rate limiter is used here (no Upstash). RLS tests
+          # are skipped (no SUPABASE_TEST_*); they run nightly against
+          # the staging DB in a separate workflow.
+          NODE_ENV: test
+
+  prod-build-no-dev-routes:
+    name: prod build excludes dev routes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build:prod
+        env:
+          # Build-time placeholders -- the build doesn't talk to real
+          # vendors, but Next.js wants the env vars present. CI uses
+          # safe dummy values; production secrets live in Vercel.
+          NODE_ENV: production
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-dummy
+          SUPABASE_SERVICE_ROLE_KEY: ci-dummy
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_ci_dummy
+          CLERK_SECRET_KEY: sk_test_ci_dummy
+          STRIPE_SECRET_KEY: sk_test_ci_dummy
+          STRIPE_WEBHOOK_SECRET: whsec_ci_dummy
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_ci_dummy
+          STRIPE_MONTHLY_PRICE_ID: price_ci
+          STRIPE_YEARLY_PRICE_ID: price_ci
+
+  csp-headers:
+    name: CSP & security headers present
+    runs-on: ubuntu-latest
+    needs: prod-build-no-dev-routes
+    if: false  # placeholder; the actual check runs as part of the W3.1 spec
+    steps:
+      - run: echo "TODO: wire up the W3.1 Playwright spec once CI has a Vercel deploy URL to hit"
