@@ -1,0 +1,30 @@
+#!/usr/bin/env sh
+# Block commits containing common secret patterns.
+#
+# Matches the *fully-formed* secret (with realistic suffix length), not the
+# bare prefix, so test files that grep for "sk_test_" don't trigger.
+#
+# To bypass for a known false positive: git commit --no-verify
+# To extend: add patterns to PATTERN below.
+
+PATTERN='sk_(test|live)_[A-Za-z0-9]{20,}'
+PATTERN="$PATTERN|whsec_[A-Za-z0-9]{20,}"
+PATTERN="$PATTERN|eyJ[A-Za-z0-9_-]{20,}\\.[A-Za-z0-9_-]{20,}\\.[A-Za-z0-9_-]{20,}"
+PATTERN="$PATTERN|pk_(test|live)_[A-Za-z0-9]{40,}"
+PATTERN="$PATTERN|service_role.*[A-Za-z0-9]{40,}"
+
+# Only check added lines (lines starting with +) in the staged diff.
+HITS=$(git diff --cached -U0 --diff-filter=AM | grep -E '^\+[^+]' | grep -E -- "$PATTERN" || true)
+
+if [ -n "$HITS" ]; then
+  echo "ERROR: commit contains a likely secret pattern. Aborting."
+  echo ""
+  echo "Matches:"
+  echo "$HITS" | sed 's/^/  /'
+  echo ""
+  echo "If this is a confirmed false positive, run: git commit --no-verify"
+  echo "If it's a real secret, do NOT bypass — rotate it first, then re-stage."
+  exit 1
+fi
+
+exit 0
