@@ -14,7 +14,10 @@ import { test, expect } from '@playwright/test'
  */
 
 const BASE = 'http://localhost:3000'
-const CLERK_SECRET = '***REMOVED-CLERK-SECRET***'
+const CLERK_SECRET = process.env.CLERK_SECRET_KEY
+if (!CLERK_SECRET) {
+  throw new Error('CLERK_SECRET_KEY is not set. Add it to .env.local or your shell env before running this spec.')
+}
 
 const ACCOUNTS = {
   student: {
