@@ -2,10 +2,19 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { getStripe } from '@/lib/stripe'
 import { createServiceClient } from '@/lib/supabase'
+import { checkoutLimiter } from '@/lib/rate-limit'
 
 export async function POST(request: NextRequest) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const rl = await checkoutLimiter.check(`user:${userId}`)
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: 'Too many checkout attempts', retryAfter: rl.retryAfter },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfter ?? 60) } },
+    )
+  }
 
   const db = createServiceClient()
 

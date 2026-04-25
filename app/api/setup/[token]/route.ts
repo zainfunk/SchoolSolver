@@ -1,11 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
+import { setupLimiter } from '@/lib/rate-limit'
 
 // GET: validate token and return school info + invite codes
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ token: string }> }
 ) {
+  // W3.2: this is unauthenticated; rate limit by IP.
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown'
+  const rl = await setupLimiter.check(`ip:${ip}`)
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: 'Too many requests', retryAfter: rl.retryAfter },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfter ?? 60) } },
+    )
+  }
+
   const { token } = await params
   const db = createServiceClient()
 
@@ -42,9 +53,18 @@ export async function GET(
 
 // POST: mark setup as complete
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ token: string }> }
 ) {
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown'
+  const rl = await setupLimiter.check(`ip:${ip}`)
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: 'Too many requests', retryAfter: rl.retryAfter },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfter ?? 60) } },
+    )
+  }
+
   const { token } = await params
   const db = createServiceClient()
 

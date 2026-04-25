@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { createAuthedServerClient } from '@/lib/supabase'
+import { profileLimiter } from '@/lib/rate-limit'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,6 +29,14 @@ export async function GET(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const rl = await profileLimiter.check(`user:${userId}`)
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: 'Too many edits', retryAfter: rl.retryAfter },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfter ?? 60) } },
+    )
+  }
 
   const targetId = request.nextUrl.searchParams.get('userId') || userId
   const body = await request.json() as Record<string, unknown>

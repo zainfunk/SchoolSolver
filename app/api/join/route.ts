@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth, clerkClient } from '@clerk/nextjs/server'
 import { createServiceClient } from '@/lib/supabase'
-import { rateLimit } from '@/lib/rate-limit'
+import { joinLimiter } from '@/lib/rate-limit'
 import type { Role } from '@/types'
 
 /**
@@ -22,12 +22,14 @@ export async function POST(request: NextRequest) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown'
-  const { success, retryAfter } = rateLimit(ip)
-  if (!success) {
+  // W3.2: persistent (Upstash) rate limit, keyed by user. The previous
+  // IP-only key let attackers behind shared NAT slip past; user-keyed
+  // matches the actual identity.
+  const rl = await joinLimiter.check(`user:${userId}`)
+  if (!rl.success) {
     return NextResponse.json(
-      { error: 'Too many requests. Please try again later.', retryAfter },
-      { status: 429 }
+      { error: 'Too many requests. Please try again later.', retryAfter: rl.retryAfter },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfter ?? 60) } },
     )
   }
 

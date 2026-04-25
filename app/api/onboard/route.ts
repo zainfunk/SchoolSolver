@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth, clerkClient } from '@clerk/nextjs/server'
 import { createServiceClient } from '@/lib/supabase'
 import { sanitizeText } from '@/lib/sanitize'
+import { onboardLimiter } from '@/lib/rate-limit'
 
 /**
  * POST /api/onboard
@@ -20,6 +21,15 @@ import { sanitizeText } from '@/lib/sanitize'
 export async function POST(request: NextRequest) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  // W3.2: per-user rate limit so an attacker can't squat 100 schools.
+  const rl = await onboardLimiter.check(`user:${userId}`)
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: 'Too many registrations. Try again later.', retryAfter: rl.retryAfter },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfter ?? 60) } },
+    )
+  }
 
   const body = await request.json()
   const { name, district, contactName, contactEmail } = body
