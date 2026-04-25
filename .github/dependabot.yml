@@ -1,0 +1,31 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: America/New_York
+    open-pull-requests-limit: 10
+    versioning-strategy: increase
+    groups:
+      patch-and-minor:
+        patterns: ["*"]
+        update-types: [patch, minor]
+    labels: [security, dependencies]
+    commit-message:
+      prefix: "chore(deps)"
+      include: scope
+    reviewers:
+      - rmohanty521
+    # Treat any major bump as a separate, manually-reviewed PR.
+    ignore:
+      - dependency-name: "*"
+        update-types: [version-update:semver-major]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    labels: [security, dependencies, github-actions]
