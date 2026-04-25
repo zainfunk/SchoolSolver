@@ -1,6 +1,20 @@
 'use client'
 
 /**
+ * Browser-safe random ID. Uses crypto.getRandomValues (Web Crypto, available
+ * in all evergreen browsers and modern Node) instead of Math.random, which
+ * is non-cryptographic. See finding C-7 from the assessment: although IDs
+ * here are not security-critical (they don't authorize anything), using a
+ * predictable PRNG anywhere in the codebase is what got us into trouble at
+ * lib/schools-store.ts.
+ */
+function cryptoRandomId(): string {
+  const buf = new Uint8Array(8)
+  crypto.getRandomValues(buf)
+  return Array.from(buf, (b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+/**
  * Offline mutation queue.
  *
  * When the browser is offline, mutations (POST/PUT/DELETE fetches) are
@@ -62,7 +76,7 @@ export function enqueueMutation(url: string, init: RequestInit) {
   }
 
   queue.push({
-    id: `oq-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id: `oq-${Date.now()}-${cryptoRandomId()}`,
     url,
     init: {
       method: init.method,

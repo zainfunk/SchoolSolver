@@ -112,10 +112,11 @@ export default function JoinPage() {
               type="text"
               required
               value={code}
-              onChange={e => setCode(e.target.value.toUpperCase())}
-              placeholder="XXXX-STU-XXXX"
+              onChange={e => setCode(e.target.value.trim())}
+              placeholder="STU-..."
               spellCheck={false}
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-gray-400 text-center"
+              autoComplete="off"
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm font-mono tracking-wide focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-gray-400 text-center"
             />
           </div>
 

@@ -21,7 +21,10 @@ export async function POST(request: NextRequest) {
   const { code } = await request.json()
   if (!code) return NextResponse.json({ error: 'Invite code required' }, { status: 400 })
 
-  const normalised = (code as string).trim().toUpperCase()
+  // Invite codes are now base64url-bodied (case-sensitive). Trim only.
+  // Old-format codes (XXXX-STU-XXXX, all uppercase) are still valid
+  // until rotation; trimming preserves both shapes.
+  const normalised = (code as string).trim()
   const db = createServiceClient()
 
   // Look up school by student, advisor, or admin invite code.

@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server'
 import { createServiceClient } from '@/lib/supabase'
 import { sanitizeText } from '@/lib/sanitize'
 import { Role } from '@/types'
+import { randomUUID } from 'node:crypto'
 
 export const dynamic = 'force-dynamic'
 
@@ -122,7 +123,7 @@ export async function POST(request: NextRequest) {
   }
 
   const message = {
-    id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id: `msg-${randomUUID()}`,
     club_id: clubId,
     sender_id: requester.userId,
     content,

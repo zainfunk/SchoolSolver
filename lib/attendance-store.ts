@@ -1,6 +1,17 @@
 import { AttendanceSession, AttendanceRecord } from '@/types'
 import { supabase } from '@/lib/supabase'
 
+/**
+ * CSPRNG-backed short ID (8 hex chars = 32 bits). Replaces a previous
+ * Math.random call that was flagged in finding C-7 of the assessment.
+ * Works in both browser and Node — globalThis.crypto is available in both.
+ */
+function csprngHex8(): string {
+  const buf = new Uint8Array(4)
+  globalThis.crypto.getRandomValues(buf)
+  return Array.from(buf, (b) => b.toString(16).padStart(2, '0')).join('')
+}
+
 // --- Sessions ---
 
 export async function getAllSessions(): Promise<AttendanceSession[]> {
@@ -52,7 +63,7 @@ export async function upsertRecord(
   clubId: string, userId: string, meetingDate: string, present: boolean,
   durationMinutes?: number,
 ): Promise<string> {
-  const id = `att-dyn-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+  const id = `att-dyn-${Date.now()}-${csprngHex8()}`
   const row: Record<string, unknown> = {
     id, club_id: clubId, user_id: userId, meeting_date: meetingDate, present,
   }

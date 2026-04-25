@@ -24,6 +24,13 @@ import { toast } from 'sonner'
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
+/** CSPRNG-backed short ID. Replaces Math.random per finding C-7. */
+function csprngHex8(): string {
+  const buf = new Uint8Array(4)
+  globalThis.crypto.getRandomValues(buf)
+  return Array.from(buf, (b) => b.toString(16).padStart(2, '0')).join('')
+}
+
 function SocialIcon({ platform }: { platform: SocialPlatform }) {
   const cls = 'w-4 h-4'
   switch (platform) {
@@ -497,7 +504,7 @@ export default function ClubDetailPage({ params }: PageProps) {
       } catch { /* location unavailable — skip */ }
     }
     const session: AttendanceSession = {
-      id: `sess-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      id: `sess-${Date.now()}-${csprngHex8()}`,
       clubId: id,
       meetingDate: qrDate,
       createdBy: currentUser.id,
