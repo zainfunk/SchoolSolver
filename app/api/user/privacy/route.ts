@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { createAuthedServerClient } from '@/lib/supabase'
+import { PrivacyPatchSchema, badRequest } from '@/lib/schemas'
 
 export const dynamic = 'force-dynamic'
 
@@ -37,16 +38,14 @@ export async function PATCH(request: NextRequest) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body = await request.json() as Record<string, unknown>
-
-  const patch: Record<string, unknown> = {}
-  if (typeof body.achievementsPublic === 'boolean') patch.achievements_public = body.achievementsPublic
-  if (typeof body.attendancePublic === 'boolean') patch.attendance_public = body.attendancePublic
-  if (typeof body.clubsPublic === 'boolean') patch.clubs_public = body.clubsPublic
-
-  if (Object.keys(patch).length === 0) {
-    return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
+  const parsed = PrivacyPatchSchema.safeParse(await request.json())
+  if (!parsed.success) {
+    return NextResponse.json(badRequest(parsed.error.issues), { status: 400 })
   }
+  const patch: Record<string, unknown> = {}
+  if (parsed.data.achievementsPublic !== undefined) patch.achievements_public = parsed.data.achievementsPublic
+  if (parsed.data.attendancePublic !== undefined)   patch.attendance_public   = parsed.data.attendancePublic
+  if (parsed.data.clubsPublic !== undefined)        patch.clubs_public        = parsed.data.clubsPublic
 
   // W2.4: RLS on user_privacy_settings limits access to user_id = current.
   const db = await createAuthedServerClient()

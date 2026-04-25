@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { createAuthedServerClient } from '@/lib/supabase'
 import { profileLimiter } from '@/lib/rate-limit'
+import { ProfilePatchSchema, badRequest } from '@/lib/schemas'
 
 export const dynamic = 'force-dynamic'
 
@@ -45,7 +46,14 @@ export async function PATCH(request: NextRequest) {
   }
 
   const targetId = request.nextUrl.searchParams.get('userId') || userId
-  const body = await request.json() as Record<string, unknown>
+
+  // W3.4 / H-10: zod-validate the body. Rejects mass-assignment, junk
+  // payloads, and javascript:/data: URLs in `socials[].url`.
+  const parsed = ProfilePatchSchema.safeParse(await request.json())
+  if (!parsed.success) {
+    return NextResponse.json(badRequest(parsed.error.issues), { status: 400 })
+  }
+  const body = parsed.data
 
   const db = await createAuthedServerClient()
 
@@ -61,10 +69,10 @@ export async function PATCH(request: NextRequest) {
   const { error } = await db.from('user_profiles').upsert(
     {
       user_id: targetId,
-      bio: typeof body.bio === 'string' ? body.bio : (current?.bio ?? ''),
-      skills: Array.isArray(body.skills) ? body.skills : (current?.skills ?? []),
-      interests: Array.isArray(body.interests) ? body.interests : (current?.interests ?? []),
-      socials: body.socials !== undefined ? body.socials : (current?.socials ?? []),
+      bio:       body.bio       ?? current?.bio       ?? '',
+      skills:    body.skills    ?? current?.skills    ?? [],
+      interests: body.interests ?? current?.interests ?? [],
+      socials:   body.socials   ?? current?.socials   ?? [],
     },
     { onConflict: 'user_id' }
   )
