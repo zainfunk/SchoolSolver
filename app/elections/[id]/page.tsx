@@ -139,7 +139,8 @@ export default function FormDetailPage({ params }: { params: Promise<{ id: strin
   const closesAt = form?.closesAt ?? null
   const color = urgencyColor(closesAt, isOpen)
   const candidates = votingItem?.candidates ?? []
-  const totalVotes = candidates.reduce((sum, candidate) => sum + candidate.votes.length, 0)
+  const totalVotes = candidates.reduce((sum, candidate) => sum + candidate.voteCount, 0)
+  const myVoteCandidateId = votingItem?.myVoteCandidateId ?? null
 
   function resolveUser(userId: string) {
     return usersById[userId] ?? (currentUser.id === userId ? currentUser : undefined)
@@ -254,8 +255,8 @@ export default function FormDetailPage({ params }: { params: Promise<{ id: strin
 
           {candidates.map((candidate, index) => {
             const user = resolveUser(candidate.userId)
-            const pct = totalVotes > 0 ? Math.round((candidate.votes.length / totalVotes) * 100) : 0
-            const myVote = candidate.votes.includes(currentUser.id)
+            const pct = totalVotes > 0 ? Math.round((candidate.voteCount / totalVotes) * 100) : 0
+            const myVote = myVoteCandidateId === candidate.userId
             const isViewer = currentUser.role === 'admin' || currentUser.role === 'advisor'
             const isPending = pendingCandidate === candidate.userId
 
@@ -310,7 +311,7 @@ export default function FormDetailPage({ params }: { params: Promise<{ id: strin
                     <div className="text-right shrink-0">
                       <span className="text-sm font-bold text-[#191c1d]">{pct}%</span>
                       <p className="text-[10px] text-[#727785]">
-                        {candidate.votes.length} vote{candidate.votes.length !== 1 ? 's' : ''}
+                        {candidate.voteCount} vote{candidate.voteCount !== 1 ? 's' : ''}
                       </p>
                     </div>
                   )}

@@ -48,6 +48,44 @@ function unique<T>(values: T[]): T[] {
   return Array.from(new Set(values))
 }
 
+/**
+ * W2.2 secret ballot: load aggregate vote counts via the SECURITY DEFINER
+ * RPC instead of querying poll_votes / election_votes directly. After
+ * 0002+0004, those tables only return the caller's own row to anon-key
+ * clients, so a direct query would yield wrong counts.
+ *
+ * The RPC checks authorization internally and returns counts only.
+ */
+async function loadPollVoteState(pollId: string): Promise<{
+  counts: Map<string, number>
+  myVoteCandidateId: string | null
+}> {
+  const [{ data: counts }, { data: ownVote }] = await Promise.all([
+    supabase.rpc('poll_vote_counts', { target_poll_id: pollId }),
+    supabase.from('poll_votes').select('candidate_user_id').eq('poll_id', pollId).maybeSingle(),
+  ])
+  const map = new Map<string, number>()
+  for (const r of (counts ?? []) as { candidate_user_id: string; vote_count: number | string }[]) {
+    map.set(r.candidate_user_id, Number(r.vote_count))
+  }
+  return { counts: map, myVoteCandidateId: ownVote?.candidate_user_id ?? null }
+}
+
+async function loadElectionVoteState(electionId: string): Promise<{
+  counts: Map<string, number>
+  myVoteCandidateId: string | null
+}> {
+  const [{ data: counts }, { data: ownVote }] = await Promise.all([
+    supabase.rpc('election_vote_counts', { target_election_id: electionId }),
+    supabase.from('election_votes').select('candidate_user_id').eq('election_id', electionId).maybeSingle(),
+  ])
+  const map = new Map<string, number>()
+  for (const r of (counts ?? []) as { candidate_user_id: string; vote_count: number | string }[]) {
+    map.set(r.candidate_user_id, Number(r.vote_count))
+  }
+  return { counts: map, myVoteCandidateId: ownVote?.candidate_user_id ?? null }
+}
+
 function mapUser(row: UserRow, override?: UserOverrideRow): User {
   return {
     id: row.id,
@@ -214,7 +252,7 @@ export async function fetchClubDetail(clubId: string, schoolId: string) {
     supabase.from('meeting_times').select('id, club_id, day_of_week, start_time, end_time, location').eq('club_id', clubId),
     supabase.from('events').select('id, club_id, title, description, date, location, is_public, created_by').eq('club_id', clubId),
     supabase.from('club_news').select('id, club_id, title, content, author_id, created_at, is_pinned').eq('club_id', clubId),
-    supabase.from('polls').select('id, club_id, position_title, created_at, is_open, poll_candidates(user_id), poll_votes(candidate_user_id, voter_user_id)').eq('club_id', clubId),
+    supabase.from('polls').select('id, club_id, position_title, created_at, is_open, poll_candidates(user_id)').eq('club_id', clubId),
     getRecordsByClub(clubId),
     getSessionsByClub(clubId),
   ])
@@ -272,19 +310,25 @@ export async function fetchClubDetail(clubId: string, schoolId: string) {
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   })
 
-  const polls: Poll[] = (pollRes.data ?? []).map((row) => ({
-    id: row.id,
-    clubId: row.club_id,
-    positionTitle: row.position_title,
-    createdAt: row.created_at,
-    isOpen: row.is_open,
-    candidates: ((row.poll_candidates ?? []) as { user_id: string }[]).map((candidate) => ({
-      userId: candidate.user_id,
-      votes: ((row.poll_votes ?? []) as { candidate_user_id: string; voter_user_id: string }[])
-        .filter((vote) => vote.candidate_user_id === candidate.user_id)
-        .map((vote) => vote.voter_user_id),
-    })),
-  }))
+  // Vote counts via RPC (W2.2 secret ballot); returns aggregates only.
+  const pollVoteStates = await Promise.all(
+    (pollRes.data ?? []).map((row) => loadPollVoteState(row.id as string)),
+  )
+  const polls: Poll[] = (pollRes.data ?? []).map((row, idx) => {
+    const state = pollVoteStates[idx]
+    return {
+      id: row.id,
+      clubId: row.club_id,
+      positionTitle: row.position_title,
+      createdAt: row.created_at,
+      isOpen: row.is_open,
+      candidates: ((row.poll_candidates ?? []) as { user_id: string }[]).map((candidate) => ({
+        userId: candidate.user_id,
+        voteCount: state.counts.get(candidate.user_id) ?? 0,
+      })),
+      myVoteCandidateId: state.myVoteCandidateId,
+    }
+  })
 
   club.socialLinks = socialLinks
   club.meetingTimes = meetingTimes
@@ -318,12 +362,14 @@ export async function fetchClubDetail(clubId: string, schoolId: string) {
 export async function fetchSchoolElectionById(id: string, schoolId: string): Promise<SchoolElection | null> {
   const { data } = await supabase
     .from('school_elections')
-    .select('id, position_title, description, created_at, is_open, election_candidates(user_id), election_votes(candidate_user_id, voter_user_id)')
+    .select('id, position_title, description, created_at, is_open, election_candidates(user_id)')
     .eq('id', id)
     .eq('school_id', schoolId)
     .maybeSingle()
 
   if (!data) return null
+
+  const state = await loadElectionVoteState(id)
 
   return {
     id: data.id,
@@ -333,17 +379,16 @@ export async function fetchSchoolElectionById(id: string, schoolId: string): Pro
     isOpen: data.is_open,
     candidates: ((data.election_candidates ?? []) as { user_id: string }[]).map((candidate) => ({
       userId: candidate.user_id,
-      votes: ((data.election_votes ?? []) as { candidate_user_id: string; voter_user_id: string }[])
-        .filter((vote) => vote.candidate_user_id === candidate.user_id)
-        .map((vote) => vote.voter_user_id),
+      voteCount: state.counts.get(candidate.user_id) ?? 0,
     })),
+    myVoteCandidateId: state.myVoteCandidateId,
   }
 }
 
 export async function fetchPollById(id: string, schoolId: string): Promise<Poll | null> {
   const { data: pollRow } = await supabase
     .from('polls')
-    .select('id, club_id, position_title, created_at, is_open, poll_candidates(user_id), poll_votes(candidate_user_id, voter_user_id)')
+    .select('id, club_id, position_title, created_at, is_open, poll_candidates(user_id)')
     .eq('id', id)
     .maybeSingle()
 
@@ -357,6 +402,8 @@ export async function fetchPollById(id: string, schoolId: string): Promise<Poll 
 
   if (!clubRow || clubRow.school_id !== schoolId) return null
 
+  const state = await loadPollVoteState(id)
+
   return {
     id: pollRow.id,
     clubId: pollRow.club_id,
@@ -365,10 +412,9 @@ export async function fetchPollById(id: string, schoolId: string): Promise<Poll 
     isOpen: pollRow.is_open,
     candidates: ((pollRow.poll_candidates ?? []) as { user_id: string }[]).map((candidate) => ({
       userId: candidate.user_id,
-      votes: ((pollRow.poll_votes ?? []) as { candidate_user_id: string; voter_user_id: string }[])
-        .filter((vote) => vote.candidate_user_id === candidate.user_id)
-        .map((vote) => vote.voter_user_id),
+      voteCount: state.counts.get(candidate.user_id) ?? 0,
     })),
+    myVoteCandidateId: state.myVoteCandidateId,
   }
 }
 

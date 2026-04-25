@@ -32,18 +32,19 @@
 import { createClient } from '@supabase/supabase-js'
 import { generateInviteCode } from '../lib/schools-store'
 
-const URL = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL
+const URL_ENV = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-if (!URL || !SERVICE_KEY) {
+if (!URL_ENV || !SERVICE_KEY) {
   console.error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required.')
   process.exit(2)
 }
 
-const db = createClient(URL, SERVICE_KEY, { auth: { persistSession: false } })
+const SUPABASE_URL: string = URL_ENV
+const db = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } })
 
 async function main() {
-  console.log(`[rotate] connecting to ${URL.replace(/^https?:\/\//, '').slice(0, 24)}...`)
+  console.log(`[rotate] connecting to ${SUPABASE_URL.replace(/^https?:\/\//, '').slice(0, 24)}...`)
 
   const { data: schools, error } = await db
     .from('schools')

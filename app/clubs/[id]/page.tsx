@@ -1359,9 +1359,9 @@ export default function ClubDetailPage({ params }: PageProps) {
             ) : (
               <div className="space-y-4">
                 {clubPolls.map((poll) => {
-                  const totalVotes = poll.candidates.reduce((s, c) => s + c.votes.length, 0)
-                  const alreadyVoted = poll.candidates.some((c) => c.votes.includes(currentUser.id))
-                  const winner = !poll.isOpen ? poll.candidates.reduce((a, b) => a.votes.length >= b.votes.length ? a : b) : null
+                  const totalVotes = poll.candidates.reduce((s, c) => s + c.voteCount, 0)
+                  const alreadyVoted = poll.myVoteCandidateId != null
+                  const winner = !poll.isOpen ? poll.candidates.reduce((a, b) => a.voteCount >= b.voteCount ? a : b) : null
                   return (
                     <div key={poll.id} className={`rounded-2xl p-5 border border-gray-100 bg-gray-50 ${!poll.isOpen ? 'opacity-70' : ''}`}>
                       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
@@ -1388,8 +1388,8 @@ export default function ClubDetailPage({ params }: PageProps) {
                       <div className="space-y-2.5">
                         {poll.candidates.map((candidate) => {
                           const user = resolveUser(candidate.userId)
-                          const pct = totalVotes > 0 ? Math.round((candidate.votes.length / totalVotes) * 100) : 0
-                          const hasVotedThis = candidate.votes.includes(currentUser.id)
+                          const pct = totalVotes > 0 ? Math.round((candidate.voteCount / totalVotes) * 100) : 0
+                          const hasVotedThis = poll.myVoteCandidateId === candidate.userId
                           return (
                             <div key={candidate.userId}>
                               <div className="flex items-center gap-3 mb-1">
@@ -1403,7 +1403,7 @@ export default function ClubDetailPage({ params }: PageProps) {
                                 )}
                                 <div className="flex-1 flex flex-wrap items-center justify-between gap-2 min-w-0">
                                   <span className="text-sm text-gray-700 min-w-0 break-words">{user?.name}</span>
-                                  <span className="text-xs text-gray-400 shrink-0">{candidate.votes.length} vote{candidate.votes.length !== 1 ? 's' : ''}{totalVotes > 0 ? ` · ${pct}%` : ''}</span>
+                                  <span className="text-xs text-gray-400 shrink-0">{candidate.voteCount} vote{candidate.voteCount !== 1 ? 's' : ''}{totalVotes > 0 ? ` · ${pct}%` : ''}</span>
                                 </div>
                               </div>
                               <div className="ml-7 w-full bg-gray-200 rounded-full h-1">

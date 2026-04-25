@@ -99,16 +99,36 @@ export default function FormsPage() {
         const myClubIds = (memData ?? []).map((r) => r.club_id)
         const pollClubIds = (devRole === 'advisor' || devRole === 'admin') ? schoolClubIds : myClubIds.filter((id) => schoolClubIds.includes(id))
         if (pollClubIds.length > 0) {
-          const { data: pollData } = await supabase.from('polls').select('*, poll_candidates(*), poll_votes(*)').in('club_id', pollClubIds)
-          if (!cancelled && pollData) setPolls(pollData.map((p) => ({
-            id: p.id, clubId: p.club_id, positionTitle: p.position_title,
-            createdAt: p.created_at, isOpen: p.is_open,
-            candidates: (p.poll_candidates as {user_id: string}[]).map((c) => ({
-              userId: c.user_id,
-              votes: (p.poll_votes as {candidate_user_id: string; voter_user_id: string}[])
-                .filter((v) => v.candidate_user_id === c.user_id).map((v) => v.voter_user_id),
-            })),
-          })))
+          // W2.2 secret ballot: pull candidates only here, then call the
+          // poll_vote_counts RPC + own-vote query per poll for aggregates.
+          const { data: pollData } = await supabase
+            .from('polls')
+            .select('id, club_id, position_title, created_at, is_open, poll_candidates(user_id)')
+            .in('club_id', pollClubIds)
+          if (!cancelled && pollData) {
+            const states = await Promise.all(
+              pollData.map(async (p) => {
+                const [{ data: counts }, { data: ownVote }] = await Promise.all([
+                  supabase.rpc('poll_vote_counts', { target_poll_id: p.id }),
+                  supabase.from('poll_votes').select('candidate_user_id').eq('poll_id', p.id).maybeSingle(),
+                ])
+                const map = new Map<string, number>()
+                for (const r of (counts ?? []) as { candidate_user_id: string; vote_count: number | string }[]) {
+                  map.set(r.candidate_user_id, Number(r.vote_count))
+                }
+                return { counts: map, myVoteCandidateId: ownVote?.candidate_user_id ?? null }
+              })
+            )
+            setPolls(pollData.map((p, i) => ({
+              id: p.id, clubId: p.club_id, positionTitle: p.position_title,
+              createdAt: p.created_at, isOpen: p.is_open,
+              candidates: (p.poll_candidates as {user_id: string}[]).map((c) => ({
+                userId: c.user_id,
+                voteCount: states[i].counts.get(c.user_id) ?? 0,
+              })),
+              myVoteCandidateId: states[i].myVoteCandidateId,
+            })))
+          }
         }
       } catch (err) {
         if (!cancelled) setLoadError(err instanceof Error ? err.message : 'Failed to load elections data')

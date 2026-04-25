@@ -36,7 +36,14 @@ type ElectionRow = {
   election_votes: { candidate_user_id: string; voter_user_id: string }[]
 }
 
-function rowToElection(row: ElectionRow): SchoolElection {
+// W2.2 secret ballot: aggregate counts and the caller's own vote pointer
+// computed server-side; voter_user_id never serialized to the browser.
+function rowToElection(row: ElectionRow, callerId: string): SchoolElection {
+  const counts = new Map<string, number>()
+  for (const v of row.election_votes) {
+    counts.set(v.candidate_user_id, (counts.get(v.candidate_user_id) ?? 0) + 1)
+  }
+  const myVote = row.election_votes.find((v) => v.voter_user_id === callerId)
   return {
     id: row.id,
     positionTitle: row.position_title,
@@ -45,10 +52,9 @@ function rowToElection(row: ElectionRow): SchoolElection {
     isOpen: row.is_open,
     candidates: row.election_candidates.map((c) => ({
       userId: c.user_id,
-      votes: row.election_votes
-        .filter((v) => v.candidate_user_id === c.user_id)
-        .map((v) => v.voter_user_id),
+      voteCount: counts.get(c.user_id) ?? 0,
     })),
+    myVoteCandidateId: myVote?.candidate_user_id ?? null,
   }
 }
 
@@ -69,7 +75,7 @@ export async function GET() {
     return NextResponse.json({ error: 'Failed to load elections' }, { status: 500 })
   }
 
-  const elections = (data as ElectionRow[] | null)?.map(rowToElection) ?? []
+  const elections = (data as ElectionRow[] | null)?.map((row) => rowToElection(row, requester.userId)) ?? []
   return NextResponse.json({ elections })
 }
 
@@ -149,7 +155,8 @@ export async function POST(request: NextRequest) {
     description,
     createdAt,
     isOpen: true,
-    candidates: candidateUserIds.map((uid) => ({ userId: uid, votes: [] })),
+    candidates: candidateUserIds.map((uid) => ({ userId: uid, voteCount: 0 })),
+    myVoteCandidateId: null,
   }
 
   return NextResponse.json({ election })

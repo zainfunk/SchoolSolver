@@ -143,19 +143,28 @@ export async function GET(_request: NextRequest, { params }: PageProps) {
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   })
 
-  const polls: Poll[] = (pollRes.data ?? []).map((r) => ({
-    id: r.id,
-    clubId: r.club_id,
-    positionTitle: r.position_title,
-    createdAt: r.created_at,
-    isOpen: r.is_open,
-    candidates: ((r.poll_candidates ?? []) as { user_id: string }[]).map((c) => ({
-      userId: c.user_id,
-      votes: ((r.poll_votes ?? []) as { candidate_user_id: string; voter_user_id: string }[])
-        .filter((v) => v.candidate_user_id === c.user_id)
-        .map((v) => v.voter_user_id),
-    })),
-  }))
+  // W2.2 secret ballot: aggregate counts server-side and only return the
+  // caller's own vote pointer. voter_user_id never leaves this function.
+  const polls: Poll[] = (pollRes.data ?? []).map((r) => {
+    const allVotes = (r.poll_votes ?? []) as { candidate_user_id: string; voter_user_id: string }[]
+    const counts = new Map<string, number>()
+    for (const v of allVotes) {
+      counts.set(v.candidate_user_id, (counts.get(v.candidate_user_id) ?? 0) + 1)
+    }
+    const myVote = allVotes.find((v) => v.voter_user_id === userId)
+    return {
+      id: r.id,
+      clubId: r.club_id,
+      positionTitle: r.position_title,
+      createdAt: r.created_at,
+      isOpen: r.is_open,
+      candidates: ((r.poll_candidates ?? []) as { user_id: string }[]).map((c) => ({
+        userId: c.user_id,
+        voteCount: counts.get(c.user_id) ?? 0,
+      })),
+      myVoteCandidateId: myVote?.candidate_user_id ?? null,
+    }
+  })
 
   const attendanceRecords: AttendanceRecord[] = (attendanceRecordsRes.data ?? []).map((r) => ({
     id: r.id as string,

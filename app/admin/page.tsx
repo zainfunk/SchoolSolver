@@ -478,8 +478,8 @@ export default function AdminPage() {
             {elections.length === 0 ? (
               <p className="px-5 py-6 text-sm text-slate-400">No school elections yet.</p>
             ) : elections.map((election) => {
-              const totalVotes = election.candidates.reduce((s, c) => s + c.votes.length, 0)
-              const winner = !election.isOpen ? election.candidates.reduce((a, b) => (a.votes.length >= b.votes.length ? a : b)) : null
+              const totalVotes = election.candidates.reduce((s, c) => s + c.voteCount, 0)
+              const winner = !election.isOpen ? election.candidates.reduce((a, b) => (a.voteCount >= b.voteCount ? a : b)) : null
               return (
                 <div key={election.id} className="px-4 md:px-5 py-4">
                   <div className="flex items-start justify-between gap-3 mb-3 flex-wrap">
@@ -498,20 +498,20 @@ export default function AdminPage() {
                   </div>
                   {winner && (
                     <div className="text-xs text-emerald-700 bg-emerald-50 rounded-lg px-3 py-1.5 mb-3 font-medium">
-                      Winner: {getUserById(winner.userId)?.name} ({winner.votes.length} votes)
+                      Winner: {getUserById(winner.userId)?.name} ({winner.voteCount} votes)
                     </div>
                   )}
                   <div className="space-y-2">
                     {election.candidates.map((c) => {
                       const user = getUserById(c.userId)
-                      const pct = totalVotes > 0 ? Math.round((c.votes.length / totalVotes) * 100) : 0
+                      const pct = totalVotes > 0 ? Math.round((c.voteCount / totalVotes) * 100) : 0
                       return (
                         <div key={c.userId} className="flex items-center gap-2 md:gap-3">
                           <span className="text-xs font-medium text-slate-700 w-20 md:w-24 shrink-0 truncate">{user?.name}</span>
                           <div className="flex-1 min-w-0 h-1.5 rounded-full bg-slate-100 overflow-hidden">
                             <div className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all" style={{ width: `${pct}%` }} />
                           </div>
-                          <span className="text-[11px] text-slate-400 w-14 md:w-16 text-right shrink-0">{c.votes.length} ({pct}%)</span>
+                          <span className="text-[11px] text-slate-400 w-14 md:w-16 text-right shrink-0">{c.voteCount} ({pct}%)</span>
                         </div>
                       )
                     })}

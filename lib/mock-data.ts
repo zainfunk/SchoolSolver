@@ -227,17 +227,20 @@ export const CLUB_NEWS: ClubNews[] = [
   },
 ]
 
+// W2.2 secret ballot: PollCandidate is now {userId, voteCount}; voter
+// identities never appear in the type. Mock data uses aggregate counts.
 export const POLLS: Poll[] = [
   {
     id: 'poll-1',
     clubId: 'club-robotics',
     positionTitle: 'Build Lead',
     candidates: [
-      { userId: 'user-student-1', votes: [] },
-      { userId: 'user-student-2', votes: [] },
+      { userId: 'user-student-1', voteCount: 0 },
+      { userId: 'user-student-2', voteCount: 0 },
     ],
     createdAt: '2026-04-04T10:00:00Z',
     isOpen: true,
+    myVoteCandidateId: null,
   },
 ]
 
@@ -247,33 +250,36 @@ export const SCHOOL_ELECTIONS: SchoolElection[] = [
     positionTitle: 'Student Body President',
     description: "Vote for next year's Student Body President. Shape the future of campus life.",
     candidates: [
-      { userId: 'user-student-1', votes: ['user-student-2'] },
-      { userId: 'user-student-3', votes: [] },
+      { userId: 'user-student-1', voteCount: 1 },
+      { userId: 'user-student-3', voteCount: 0 },
     ],
     createdAt: '2026-04-01T09:00:00Z',
     isOpen: true,
+    myVoteCandidateId: null,
   },
   {
     id: 'selec-2',
     positionTitle: 'Student Body Treasurer',
     description: "Vote for next year's Student Body Treasurer. Responsible for managing the student activity fund.",
     candidates: [
-      { userId: 'user-student-2', votes: [] },
-      { userId: 'user-student-3', votes: [] },
+      { userId: 'user-student-2', voteCount: 0 },
+      { userId: 'user-student-3', voteCount: 0 },
     ],
     createdAt: '2026-04-01T09:05:00Z',
     isOpen: true,
+    myVoteCandidateId: null,
   },
   {
     id: 'selec-3',
     positionTitle: 'Student Body Vice President',
     description: "Past election — Vice President for the 2025–26 school year.",
     candidates: [
-      { userId: 'user-student-1', votes: ['user-admin-1', 'user-advisor-1'] },
-      { userId: 'user-student-2', votes: ['user-advisor-2'] },
+      { userId: 'user-student-1', voteCount: 2 },
+      { userId: 'user-student-2', voteCount: 1 },
     ],
     createdAt: '2025-09-10T09:00:00Z',
     isOpen: false,
+    myVoteCandidateId: null,
   },
 ]
 

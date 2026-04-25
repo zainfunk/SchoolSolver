@@ -126,10 +126,15 @@ export interface UserBadge {
 }
 
 // --- Polls & Elections ---
+//
+// As of W2.2 (secret ballot) the server NEVER returns voter identities
+// to the browser. `votes: string[]` (array of voter user IDs) is gone;
+// in its place are aggregated counts and a per-caller "did I vote, and
+// for whom" pointer.
 
 export interface PollCandidate {
   userId: string
-  votes: string[]
+  voteCount: number
 }
 
 export interface Poll {
@@ -139,6 +144,8 @@ export interface Poll {
   candidates: PollCandidate[]
   createdAt: string
   isOpen: boolean
+  /** The caller's own vote in this poll, if any. null = haven't voted. */
+  myVoteCandidateId?: string | null
 }
 
 export interface AttendanceSession {
@@ -160,6 +167,8 @@ export interface SchoolElection {
   candidates: PollCandidate[]
   createdAt: string
   isOpen: boolean
+  /** The caller's own vote in this election, if any. null = haven't voted. */
+  myVoteCandidateId?: string | null
 }
 
 export interface ChatMessage {
