@@ -844,7 +844,7 @@ export default function LandingPage() {
               },
               {
                 q: 'Is student data private?',
-                a: 'Completely. We\'re FERPA-compliant, encrypted end-to-end, and never sell data. Student info is visible only to authorized school staff.',
+                a: 'Yes. Data is encrypted in transit and at rest, never sold, and visible only to authorized school staff. ClubIt is designed to support FERPA "school official" arrangements; ask us for the data-processing agreement before contracting.',
               },
             ].map((f) => (
               <details
@@ -926,7 +926,7 @@ export default function LandingPage() {
             <div className="text-xs text-slate-400">© 2026 ClubIt. Made for high schools everywhere.</div>
             <div className="flex items-center gap-2 text-xs text-slate-400">
               <ShieldCheck className="w-3.5 h-3.5" />
-              FERPA-compliant · SOC 2 in progress
+              Encrypted in transit and at rest
             </div>
           </div>
         </div>
