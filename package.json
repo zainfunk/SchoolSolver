@@ -10,6 +10,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:rls": "vitest run --config vitest.rls.config.ts",
     "test:e2e": "playwright test",
     "rotate-tokens:prod": "tsx scripts/rotate-existing-tokens.ts",
     "build:ios": "next build && npx cap sync ios",
