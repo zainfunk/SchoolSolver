@@ -1,28 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { createServiceClient } from '@/lib/supabase'
+import { createAuthedServerClient } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
 
-// GET — fetch profile for current user or ?userId=... (same-school only)
+// GET — fetch profile for current user or ?userId=... (RLS limits to same school).
 export async function GET(request: NextRequest) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const targetId = request.nextUrl.searchParams.get('userId') || userId
 
-  const db = createServiceClient()
-
-  // If viewing someone else's profile, ensure same school
-  if (targetId !== userId) {
-    const [{ data: me }, { data: them }] = await Promise.all([
-      db.from('users').select('school_id').eq('id', userId).maybeSingle(),
-      db.from('users').select('school_id').eq('id', targetId).maybeSingle(),
-    ])
-    if (!me?.school_id || me.school_id !== them?.school_id) {
-      return NextResponse.json({ error: 'Not in same school' }, { status: 403 })
-    }
-  }
+  // W2.4: authed client; RLS on user_profiles uses app.user_in_scope which
+  // already gates same-school access. The previous TS-level check was
+  // duplicating that, so it's removed.
+  const db = await createAuthedServerClient()
 
   const { data } = await db
     .from('user_profiles')
@@ -38,7 +30,7 @@ export async function GET(request: NextRequest) {
   })
 }
 
-// PATCH — update profile for current user (or admin can edit others via ?userId=...)
+// PATCH — update profile for current user (admins can edit others via ?userId=...; RLS enforces).
 export async function PATCH(request: NextRequest) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -46,17 +38,11 @@ export async function PATCH(request: NextRequest) {
   const targetId = request.nextUrl.searchParams.get('userId') || userId
   const body = await request.json() as Record<string, unknown>
 
-  const db = createServiceClient()
+  const db = await createAuthedServerClient()
 
-  // If editing someone else, must be admin in the same school
-  if (targetId !== userId) {
-    const { data: me } = await db.from('users').select('role, school_id').eq('id', userId).maybeSingle()
-    if (me?.role !== 'admin' && me?.role !== 'superadmin') {
-      return NextResponse.json({ error: 'Only admins can edit other profiles' }, { status: 403 })
-    }
-  }
-
-  // Fetch current profile to merge
+  // Fetch current profile to merge. RLS may return null if the caller
+  // can't read it; that's fine -- the upsert below will then fail RLS
+  // too and we return 403.
   const { data: current } = await db
     .from('user_profiles')
     .select('bio, skills, interests, socials')
@@ -76,6 +62,10 @@ export async function PATCH(request: NextRequest) {
 
   if (error) {
     console.error('profile update error', error)
+    // 42501 = insufficient_privilege => RLS denied; surface as 403.
+    if ((error as { code?: string }).code === '42501') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
     return NextResponse.json({ error: 'Failed to save profile' }, { status: 500 })
   }
 

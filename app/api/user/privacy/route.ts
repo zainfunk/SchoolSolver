@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { createServiceClient } from '@/lib/supabase'
+import { createAuthedServerClient } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,7 +15,8 @@ export async function GET() {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const db = createServiceClient()
+  // W2.4: RLS on user_privacy_settings limits access to user_id = current.
+  const db = await createAuthedServerClient()
   const { data } = await db
     .from('user_privacy_settings')
     .select('achievements_public, attendance_public, clubs_public')
@@ -47,7 +48,8 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
   }
 
-  const db = createServiceClient()
+  // W2.4: RLS on user_privacy_settings limits access to user_id = current.
+  const db = await createAuthedServerClient()
 
   const { error } = await db
     .from('user_privacy_settings')

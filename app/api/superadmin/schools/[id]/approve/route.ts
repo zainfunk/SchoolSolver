@@ -87,11 +87,12 @@ export async function POST(
   // fallback path.)
   let promotedAdminId: string | null = null
   if (school.requested_admin_user_id) {
-    promotedAdminId = school.requested_admin_user_id
+    const requestedAdminId: string = school.requested_admin_user_id
+    promotedAdminId = requestedAdminId
     const { error: roleErr } = await db
       .from('users')
       .update({ role: 'admin' })
-      .eq('id', promotedAdminId)
+      .eq('id', requestedAdminId)
       .eq('school_id', id) // pinned to this school
 
     if (roleErr) {
@@ -108,8 +109,8 @@ export async function POST(
     // Sync Clerk metadata best-effort.
     try {
       const client = await clerkClient()
-      const target = await client.users.getUser(promotedAdminId)
-      await client.users.updateUserMetadata(promotedAdminId, {
+      const target = await client.users.getUser(requestedAdminId)
+      await client.users.updateUserMetadata(requestedAdminId, {
         publicMetadata: { ...target.publicMetadata, role: 'admin' },
       })
     } catch (metaErr) {

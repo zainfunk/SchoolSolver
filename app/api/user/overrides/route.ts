@@ -1,17 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { createServiceClient } from '@/lib/supabase'
+import { createAuthedServerClient } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
 
 // GET — fetch name/email overrides for current user or ?userId=...
+// (RLS gates same-school visibility via app.user_in_scope).
 export async function GET(request: NextRequest) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const targetId = request.nextUrl.searchParams.get('userId') || userId
 
-  const db = createServiceClient()
+  // W2.4: authed client; RLS on user_overrides_select limits to same-school.
+  const db = await createAuthedServerClient()
   const { data } = await db
     .from('user_overrides')
     .select('name, email')
@@ -21,22 +23,14 @@ export async function GET(request: NextRequest) {
   return NextResponse.json(data ?? {})
 }
 
-// PATCH — update name/email overrides (own profile, or admin editing another user via ?userId=...)
+// PATCH — update name/email overrides (own profile, or admin editing another via ?userId=...;
+// RLS enforces both).
 export async function PATCH(request: NextRequest) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const targetId = request.nextUrl.searchParams.get('userId') || userId
   const body = await request.json() as Record<string, unknown>
-
-  // If editing someone else, must be admin
-  if (targetId !== userId) {
-    const db = createServiceClient()
-    const { data: me } = await db.from('users').select('role').eq('id', userId).maybeSingle()
-    if (me?.role !== 'admin' && me?.role !== 'superadmin') {
-      return NextResponse.json({ error: 'Only admins can edit other users' }, { status: 403 })
-    }
-  }
 
   const patch: Record<string, unknown> = {}
   if (typeof body.name === 'string' && body.name.trim()) patch.name = body.name.trim()
@@ -46,7 +40,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
   }
 
-  const db = createServiceClient()
+  const db = await createAuthedServerClient()
   const { error } = await db
     .from('user_overrides')
     .upsert(
@@ -56,6 +50,9 @@ export async function PATCH(request: NextRequest) {
 
   if (error) {
     console.error('user overrides update error', error)
+    if ((error as { code?: string }).code === '42501') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
     return NextResponse.json({ error: 'Failed to save' }, { status: 500 })
   }
 

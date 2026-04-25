@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { auth } from '@clerk/nextjs/server'
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -18,7 +19,36 @@ export const supabase = createClient(url, anonKey, {
   },
 })
 
-// Server-side only: bypasses RLS, never import in client components.
+/**
+ * Server-side, RLS-respecting Supabase client.
+ *
+ * Carries the caller's Clerk session token so PostgREST sees the right
+ * `auth.jwt()->>'sub'` and RLS policies authorize the request as the
+ * caller, not as the service role. This is the *preferred* server
+ * client.
+ *
+ * Use `createServiceClient` (below) only when justified per
+ * `docs/security/W2.4-SERVICE-ROLE-INVENTORY.md`.
+ *
+ * Closes part of finding C-8.
+ */
+export async function createAuthedServerClient() {
+  const { getToken } = await auth()
+  const token = (await getToken()) ?? null
+  return createClient(url, anonKey, {
+    accessToken: async () => token,
+    auth: { persistSession: false, autoRefreshToken: false },
+  })
+}
+
+/**
+ * Server-side only: bypasses RLS. NEVER import in client components.
+ *
+ * Every call site MUST be listed in
+ * docs/security/W2.4-SERVICE-ROLE-INVENTORY.md with a justification.
+ * New service-role usage requires a code-review approval per the
+ * checklist there.
+ */
 export function createServiceClient() {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
   return createClient(url, serviceKey)
