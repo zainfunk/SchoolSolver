@@ -25,7 +25,7 @@ export default function RocketLoader({ open, label = 'Launching…', subLabel, d
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.25 }}
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-gradient-to-br from-slate-950/95 via-slate-900/95 to-blue-950/95 backdrop-blur-md"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-gradient-to-br from-[#001f44]/97 via-[#003a82]/97 to-[#0058be]/95 backdrop-blur-md"
       role="status"
       aria-live="polite"
     >
@@ -56,9 +56,9 @@ export default function RocketLoader({ open, label = 'Launching…', subLabel, d
         <div className="relative w-24 h-32 mb-8 flex items-end justify-center">
           {!done && (
             <>
-              {/* Exhaust trail */}
+              {/* Exhaust trail — branded blues */}
               <motion.div
-                className="absolute bottom-0 w-2 rounded-full bg-gradient-to-b from-orange-400 via-amber-300 to-transparent"
+                className="absolute bottom-0 w-2 rounded-full bg-gradient-to-b from-cyan-300 via-sky-200 to-transparent"
                 initial={{ height: 8, opacity: 0.4 }}
                 animate={{ height: [12, 60, 12], opacity: [0.4, 1, 0.4] }}
                 transition={{ duration: 0.6, repeat: Infinity }}
@@ -76,9 +76,9 @@ export default function RocketLoader({ open, label = 'Launching…', subLabel, d
             initial={{ y: 0, rotate: -8 }}
             animate={done ? { y: -6, rotate: 0, scale: 1.1 } : { y: [-6, 4, -6], rotate: [-8, -4, -8] }}
             transition={done ? { duration: 0.4 } : { duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
-            className="relative z-10 w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center shadow-2xl shadow-blue-500/40"
+            className="relative z-10 w-16 h-16 rounded-2xl bg-gradient-to-br from-white to-sky-100 flex items-center justify-center shadow-2xl shadow-sky-500/40 ring-1 ring-white/30"
           >
-            <Rocket className="w-8 h-8 text-white" strokeWidth={2.5} />
+            <Rocket className="w-8 h-8 text-[#0058be]" strokeWidth={2.5} />
           </motion.div>
         </div>
 
@@ -86,7 +86,7 @@ export default function RocketLoader({ open, label = 'Launching…', subLabel, d
           key={label}
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-xl font-bold text-white tracking-tight mb-2"
+          className="text-xl font-bold text-white tracking-tight mb-2 drop-shadow-sm"
           style={{ fontFamily: 'var(--font-manrope, sans-serif)' }}
         >
           {label}
@@ -97,7 +97,7 @@ export default function RocketLoader({ open, label = 'Launching…', subLabel, d
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.1 }}
-            className="text-sm text-blue-200/80 max-w-xs"
+            className="text-sm text-sky-100/85 max-w-xs"
           >
             {subLabel}
           </motion.p>
@@ -105,9 +105,9 @@ export default function RocketLoader({ open, label = 'Launching…', subLabel, d
 
         {/* Indeterminate progress bar */}
         {!done && (
-          <div className="mt-8 w-64 h-1 bg-white/10 rounded-full overflow-hidden">
+          <div className="mt-8 w-64 h-1 bg-white/15 rounded-full overflow-hidden">
             <motion.div
-              className="h-full w-1/3 rounded-full bg-gradient-to-r from-blue-400 via-cyan-300 to-blue-400"
+              className="h-full w-1/3 rounded-full bg-gradient-to-r from-white via-sky-200 to-white"
               animate={{ x: ['-100%', '300%'] }}
               transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
             />

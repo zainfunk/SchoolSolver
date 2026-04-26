@@ -64,14 +64,24 @@ export async function POST(
     return NextResponse.json({ error: 'This invite link has already been used' }, { status: 410 })
   }
 
-  // Refuse if the caller is already enrolled in a school. We can't have
-  // one user belong to two schools.
+  // Refuse if the caller is already a platform superadmin — they manage
+  // the platform, not a single school, and silently rebinding them as a
+  // school admin would lose their superadmin role.
   const { data: existingUser } = await db
     .from('users')
-    .select('school_id')
+    .select('role, school_id')
     .eq('id', userId)
     .maybeSingle()
 
+  if (existingUser?.role === 'superadmin') {
+    return NextResponse.json(
+      { error: 'Sign out of your superadmin account and claim this invite from a fresh account.' },
+      { status: 409 },
+    )
+  }
+
+  // Refuse if the caller is already enrolled in a school. We can't have
+  // one user belong to two schools.
   if (existingUser?.school_id) {
     return NextResponse.json(
       { error: 'You are already enrolled in a school. Use a different account to claim this invite.' },

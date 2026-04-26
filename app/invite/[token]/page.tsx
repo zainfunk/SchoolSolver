@@ -219,22 +219,25 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
           <p className="text-gray-500 text-sm mt-2 mb-1">
             Invite sent to <span className="font-medium text-gray-700">{email}</span>
           </p>
-          <p className="text-gray-500 text-sm mb-7">
-            Create an account (or sign in) to set up your school and become its admin.
+          <p className="text-gray-500 text-sm mb-2">
+            Create your admin account first — you&apos;ll need it to sign back in to ClubIt later.
+          </p>
+          <p className="text-xs text-gray-400 mb-7">
+            On the next screen you&apos;ll set up your school and unlock your admin role.
           </p>
           <div className="flex flex-col gap-2.5">
             <Link
               href={`/sign-up?redirect_url=${redirectTarget}`}
-              className="flex items-center justify-center gap-2 w-full bg-black text-white py-3 rounded-xl text-sm font-medium hover:bg-gray-800 transition-colors"
+              className="flex items-center justify-center gap-2 w-full bg-[#0058be] text-white py-3 rounded-xl text-sm font-bold hover:bg-[#0047a0] transition-colors shadow-lg shadow-blue-500/20"
             >
               <LogIn className="w-4 h-4" />
-              Create account & continue
+              Create your admin account
             </Link>
             <Link
               href={`/sign-in?redirect_url=${redirectTarget}`}
-              className="text-sm text-gray-500 hover:text-gray-800 transition-colors"
+              className="text-xs text-gray-400 hover:text-gray-700 transition-colors mt-1"
             >
-              Already have an account? Sign in
+              Already have a ClubIt account? Sign in
             </Link>
           </div>
         </FadeIn>
