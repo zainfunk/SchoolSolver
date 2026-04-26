@@ -1008,18 +1008,42 @@ function SchoolRow({ school, onAction, onViewDetails }: SchoolRowProps) {
             </div>
           )}
 
-          {/* Setup link */}
-          {setupLink && (
-            <div className="bg-blue-50 rounded-xl p-3 flex items-center justify-between gap-3">
-              <p className="text-xs text-blue-700 font-mono break-all">{window.location.origin}{setupLink}</p>
-              <div className="flex gap-2 shrink-0">
-                <CopyButton value={`${window.location.origin}${setupLink}`} />
-                <a href={setupLink} target="_blank" rel="noreferrer" className="text-blue-500 hover:text-blue-700">
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
+          {/* Setup link — show whenever a token exists, not only after a fresh click */}
+          {(setupLink || school.setupToken) && (() => {
+            const path = setupLink ?? `/setup/${school.setupToken}`
+            const fullLink = `${window.location.origin}${path}`
+            const subject = `Your ClubIt setup link for ${school.name}`
+            const body =
+              `Hi ${school.contactName || 'there'},\n\n` +
+              `Your ClubIt account for ${school.name} is approved and ready to set up. ` +
+              `Open the link below to view your invite codes and complete setup:\n\n` +
+              `${fullLink}\n\n` +
+              `This is a one-time link — please don't share it publicly.\n\n` +
+              `— The ClubIt team`
+            const mailto =
+              `mailto:${encodeURIComponent(school.contactEmail)}` +
+              `?subject=${encodeURIComponent(subject)}` +
+              `&body=${encodeURIComponent(body)}`
+            return (
+              <div className="bg-blue-50 rounded-xl p-3 flex items-center justify-between gap-3">
+                <p className="text-xs text-blue-700 font-mono break-all">{fullLink}</p>
+                <div className="flex gap-2 shrink-0 items-center">
+                  <CopyButton value={fullLink} />
+                  <a
+                    href={mailto}
+                    title={`Email to ${school.contactEmail}`}
+                    className="flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-800 bg-white border border-blue-200 hover:border-blue-300 rounded-lg px-2 py-1 transition-colors"
+                  >
+                    <Mail className="w-3.5 h-3.5" />
+                    Email
+                  </a>
+                  <a href={path} target="_blank" rel="noreferrer" className="text-blue-500 hover:text-blue-700" title="Open setup page">
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </div>
               </div>
-            </div>
-          )}
+            )
+          })()}
 
           {/* Rename form */}
           {editing && (
