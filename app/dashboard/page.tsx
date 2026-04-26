@@ -4,9 +4,11 @@ import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { useMockAuth } from '@/lib/mock-auth'
 import { supabase } from '@/lib/supabase'
-import { Users, BookOpen, Pin, Calendar, MessageSquare, CheckCircle, Clock, AlertCircle, ChevronDown, ChevronUp, ArrowRight } from 'lucide-react'
+import { Users, BookOpen, Pin, Calendar, MessageSquare, CheckCircle, Clock, AlertCircle, ChevronDown, ChevronUp, ArrowRight, Plus, X } from 'lucide-react'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { FadeIn, Stagger } from '@/components/ui/FadeIn'
+import ClubForm from '@/components/admin/ClubForm'
+import { motion, AnimatePresence } from 'framer-motion'
 import type { Club, ClubEvent, ClubNews, JoinRequest } from '@/types'
 import { toast } from 'sonner'
 import { cachedFetch, invalidateCachePrefix } from '@/lib/fetch-cache'
@@ -35,6 +37,7 @@ export default function DashboardPage() {
   const [showPending, setShowPending] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [showCreateClub, setShowCreateClub] = useState(false)
 
   useEffect(() => {
     // Guard on id — the server resolves school context.
@@ -70,6 +73,29 @@ export default function DashboardPage() {
     setIssueReports((prev) => prev.map((r) => r.id === id ? { ...r, status: 'resolved' } : r))
     invalidateCachePrefix('/api/school/dashboard')
     toast.success('Issue resolved')
+  }
+
+  async function handleCreateClub(
+    data: Omit<Club, 'id' | 'memberIds' | 'leadershipPositions' | 'socialLinks' | 'meetingTimes' | 'createdAt'>
+  ) {
+    const res = await fetch('/api/school/clubs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    const payload = await res.json()
+    if (!res.ok) {
+      throw new Error(payload.error ?? 'Failed to create club')
+    }
+    invalidateCachePrefix('/api/school/dashboard')
+    const refreshed = await cachedFetch<{ clubs?: Club[]; advisorNames?: Record<string, string> }>(
+      '/api/school/dashboard',
+      { bust: true },
+    )
+    setMyClubs(refreshed.clubs ?? [])
+    setAdvisorNames(refreshed.advisorNames ?? {})
+    setShowCreateClub(false)
+    toast.success('Club created!')
   }
 
   const firstName = currentUser.name.split(' ')[0]
@@ -187,6 +213,15 @@ export default function DashboardPage() {
               You are advising {myClubs.length} club{myClubs.length !== 1 ? 's' : ''}.
             </p>
           )}
+          {currentUser.role === 'advisor' && (
+            <button
+              onClick={() => setShowCreateClub(true)}
+              className="mt-4 inline-flex items-center gap-1.5 text-sm font-bold bg-[#0058be] text-white px-4 py-2 rounded-xl hover:bg-[#0047a0] transition-colors shadow-lg shadow-blue-500/20"
+            >
+              <Plus className="w-4 h-4" />
+              Create a club
+            </button>
+          )}
         </div>
 
         {showPending && pendingRequests.length > 0 && (
@@ -248,7 +283,19 @@ export default function DashboardPage() {
         ) : myClubs.length === 0 ? (
           <FadeIn className="text-center py-20 bg-white rounded-xl border">
             {currentUser.role === 'advisor'
-              ? <><Users className="w-8 h-8 text-gray-300 mx-auto mb-3" /><p className="text-gray-500 font-medium">You are not assigned as advisor to any clubs yet.</p></>
+              ? (
+                <div className="max-w-sm mx-auto">
+                  <Users className="w-8 h-8 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-500 font-medium mb-4">You are not advising any clubs yet.</p>
+                  <button
+                    onClick={() => setShowCreateClub(true)}
+                    className="inline-flex items-center gap-1.5 text-sm font-bold bg-[#0058be] text-white px-4 py-2 rounded-xl hover:bg-[#0047a0] transition-colors shadow-lg shadow-blue-500/20"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Create your first club
+                  </button>
+                </div>
+              )
               : <div className="max-w-sm mx-auto">
                   <div className="w-16 h-16 rounded-full mx-auto mb-5 flex items-center justify-center" style={{ background: 'rgba(0, 88, 190, 0.08)' }}>
                     <BookOpen className="w-8 h-8 text-[#0058be]" />
@@ -332,6 +379,51 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {/* Create-club modal — advisors only */}
+      <AnimatePresence>
+        {showCreateClub && currentUser.role === 'advisor' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+            onClick={() => setShowCreateClub(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 16, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 16, scale: 0.96 }}
+              transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+              className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-6 pt-5">
+                <h2 className="text-base font-semibold text-gray-900">New club</h2>
+                <button
+                  onClick={() => setShowCreateClub(false)}
+                  className="text-gray-400 hover:text-gray-700 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="p-2">
+                <ClubForm
+                  advisors={[{
+                    id: currentUser.id,
+                    name: currentUser.name,
+                    email: currentUser.email,
+                    role: 'advisor',
+                    schoolId: currentUser.schoolId,
+                  }]}
+                  onSubmit={handleCreateClub}
+                />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
