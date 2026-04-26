@@ -21,12 +21,13 @@ migrations/
   0004_secret_ballot.sql             -- H-3: poll/election votes are secret; aggregate RPCs added
   0005_invite_code_binding.sql       -- W2.5: single-use admin/advisor codes, email-domain bind
   0006_audit_log.sql                 -- W3.3: append-only audit_log table + app.audit() helper
+  0007_club_dues.sql                 -- per-club dues amount + per-member club_dues_payments table
 
 rollbacks/
   *.down.sql                         -- one per forward migration; apply manually if you need to revert
 
 scripts/
-  APPLY_ALL.sql       -- 0000..0006 concatenated; one-shot for the SQL Editor
+  APPLY_ALL.sql       -- 0000..0007 concatenated; one-shot for the SQL Editor
   RESET_AND_APPLY.sql -- DELETE tracker rows + APPLY_ALL + re-record
   RESET_TRACKER.sql   -- DELETE only (use when the schema is already correct)
 ```
@@ -67,7 +68,7 @@ record a migration whose version is already in the tracker. Two cases:
 
 - **The schema change you're about to apply is already applied.** Run
   `supabase/scripts/RESET_TRACKER.sql` from the SQL Editor to clear the
-  tracker rows for `0000`–`0006`, then `supabase db push` again. The
+  tracker rows for `0000`–`0007`, then `supabase db push` again. The
   CLI re-applies (idempotent — no-op) and re-records cleanly.
 - **The `*.down.sql` files used to be in `migrations/`.** They've been
   moved to `../rollbacks/`. If you have an older clone, `git pull` to
@@ -76,11 +77,11 @@ record a migration whose version is already in the tracker. Two cases:
 ## Rollback
 
 ```bash
-psql "$DATABASE_URL" < supabase/rollbacks/0006_audit_log.down.sql
+psql "$DATABASE_URL" < supabase/rollbacks/0007_club_dues.down.sql
 # ...etc, reverse order
 ```
 
-Down migrations exist for 0001–0006. The 0000 baseline has no down
+Down migrations exist for 0001–0007. The 0000 baseline has no down
 because it represents the project's foundational schema.
 
 ## Adding a new migration

@@ -26,6 +26,7 @@ function mapClubRowToClub(row: {
   auto_accept: boolean | null
   tags: string[] | null
   event_creator_ids: string[] | null
+  dues_amount_cents: number | null
   created_at: string
 }): Club {
   return {
@@ -43,6 +44,7 @@ function mapClubRowToClub(row: {
     eventCreatorIds: row.event_creator_ids ?? [],
     createdAt: row.created_at,
     autoAccept: row.auto_accept ?? false,
+    duesAmountCents: row.dues_amount_cents ?? 0,
   }
 }
 
@@ -97,7 +99,7 @@ export async function GET(request: NextRequest) {
   const db = createServiceClient()
   const { data: clubRows, error: clubsError } = await db
     .from('clubs')
-    .select('id, name, description, icon_url, capacity, advisor_id, auto_accept, tags, event_creator_ids, created_at')
+    .select('id, name, description, icon_url, capacity, advisor_id, auto_accept, tags, event_creator_ids, dues_amount_cents, created_at')
     .eq('school_id', requester.schoolId)
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1)
@@ -283,7 +285,7 @@ export async function POST(request: NextRequest) {
       created_at: createdAt,
       school_id: requester.schoolId,
     })
-    .select('id, name, description, icon_url, capacity, advisor_id, auto_accept, tags, event_creator_ids, created_at')
+    .select('id, name, description, icon_url, capacity, advisor_id, auto_accept, tags, event_creator_ids, dues_amount_cents, created_at')
     .single()
 
   if (insertError || !clubRow) {

@@ -77,6 +77,18 @@ export interface Club {
   tags?: string[]
   createdAt: string
   autoAccept: boolean
+  duesAmountCents: number // 0 = no dues collected
+}
+
+export interface ClubDuesPayment {
+  id: string
+  clubId: string
+  userId: string
+  paid: boolean
+  paidAt?: string
+  amountCents: number
+  markedBy?: string
+  updatedAt: string
 }
 
 export interface Membership {

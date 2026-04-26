@@ -23,7 +23,21 @@ create table if not exists clubs (
   auto_accept boolean default false,
   tags text[] default '{}',
   event_creator_ids text[] default '{}',
+  dues_amount_cents int not null default 0,
   created_at text not null
+);
+
+-- Club dues payments (per-member tracking)
+create table if not exists club_dues_payments (
+  id            text primary key,
+  club_id       text not null references clubs(id) on delete cascade,
+  user_id       text not null references users(id) on delete cascade,
+  paid          boolean not null default false,
+  paid_at       text,
+  amount_cents  int not null default 0,
+  marked_by     text references users(id) on delete set null,
+  updated_at    text not null,
+  unique(club_id, user_id)
 );
 
 -- Leadership positions

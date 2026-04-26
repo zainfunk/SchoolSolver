@@ -42,6 +42,7 @@ export default function ClubForm({ advisors, onSubmit }: ClubFormProps) {
         tags: tags ? tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
         autoAccept: false,
         eventCreatorIds: [],
+        duesAmountCents: 0,
       })
       setName('')
       setDescription('')

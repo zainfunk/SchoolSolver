@@ -6,7 +6,7 @@
 -- IF NOT EXISTS, every policy is dropped before being re-created.
 -- Re-running the script after a partial success is safe.
 -- 
--- Generated from migrations 0000..0006.
+-- Generated from migrations 0000..0007.
 -- ============================================================================
 
 
@@ -38,6 +38,7 @@ create table if not exists clubs (
   auto_accept boolean default false,
   tags text[] default '{}',
   event_creator_ids text[] default '{}',
+  dues_amount_cents int not null default 0,
   created_at text not null
 );
 
@@ -2126,5 +2127,53 @@ commit;
 
 -- ============================================================================
 -- END 0006_audit_log.sql
+-- ============================================================================
+
+
+-- ============================================================================
+-- BEGIN 0007_club_dues.sql
+-- ============================================================================
+-- 0007_club_dues.sql -- per-club dues amount + per-member payments table.
+
+begin;
+
+alter table clubs
+  add column if not exists dues_amount_cents int not null default 0;
+
+create table if not exists club_dues_payments (
+  id            text primary key,
+  club_id       text not null references clubs(id) on delete cascade,
+  user_id       text not null references users(id) on delete cascade,
+  paid          boolean not null default false,
+  paid_at       text,
+  amount_cents  int not null default 0,
+  marked_by     text references users(id) on delete set null,
+  updated_at    text not null,
+  unique(club_id, user_id)
+);
+
+create index if not exists club_dues_payments_club_idx on club_dues_payments (club_id);
+create index if not exists club_dues_payments_user_idx on club_dues_payments (user_id);
+
+alter table club_dues_payments enable row level security;
+
+drop policy if exists club_dues_payments_select on club_dues_payments;
+create policy club_dues_payments_select on club_dues_payments
+  for select to authenticated
+  using (
+    app.club_manager(club_id)
+    or (app.club_in_scope(club_id) and user_id = app.current_user_id())
+  );
+
+drop policy if exists club_dues_payments_manage on club_dues_payments;
+create policy club_dues_payments_manage on club_dues_payments
+  for all to authenticated
+  using (app.club_manager(club_id))
+  with check (app.club_manager(club_id));
+
+commit;
+
+-- ============================================================================
+-- END 0007_club_dues.sql
 -- ============================================================================
 

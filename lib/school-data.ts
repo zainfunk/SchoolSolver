@@ -41,6 +41,7 @@ type ClubRow = {
   tags?: string[] | null
   event_creator_ids?: string[] | null
   auto_accept?: boolean | null
+  dues_amount_cents?: number | null
   created_at?: string | null
 }
 
@@ -113,6 +114,7 @@ function mapClub(row: ClubRow): Club {
     tags: row.tags ?? [],
     createdAt: row.created_at ?? '',
     autoAccept: row.auto_accept ?? false,
+    duesAmountCents: row.dues_amount_cents ?? 0,
   }
 }
 
@@ -207,7 +209,7 @@ export async function fetchClubsByIds(clubIds: string[]): Promise<Club[]> {
 
   const { data } = await supabase
     .from('clubs')
-    .select('id, name, description, icon_url, capacity, advisor_id, tags, event_creator_ids, auto_accept, created_at')
+    .select('id, name, description, icon_url, capacity, advisor_id, tags, event_creator_ids, auto_accept, dues_amount_cents, created_at')
     .in('id', ids)
 
   return enrichClubs((data ?? []) as ClubRow[])
@@ -216,7 +218,7 @@ export async function fetchClubsByIds(clubIds: string[]): Promise<Club[]> {
 export async function fetchSchoolClubs(schoolId: string): Promise<Club[]> {
   const { data } = await supabase
     .from('clubs')
-    .select('id, name, description, icon_url, capacity, advisor_id, tags, event_creator_ids, auto_accept, created_at')
+    .select('id, name, description, icon_url, capacity, advisor_id, tags, event_creator_ids, auto_accept, dues_amount_cents, created_at')
     .eq('school_id', schoolId)
     .order('name')
 
@@ -226,7 +228,7 @@ export async function fetchSchoolClubs(schoolId: string): Promise<Club[]> {
 export async function fetchClubDetail(clubId: string, schoolId: string) {
   const { data: clubRow } = await supabase
     .from('clubs')
-    .select('id, name, description, icon_url, capacity, advisor_id, tags, event_creator_ids, auto_accept, created_at')
+    .select('id, name, description, icon_url, capacity, advisor_id, tags, event_creator_ids, auto_accept, dues_amount_cents, created_at')
     .eq('id', clubId)
     .eq('school_id', schoolId)
     .maybeSingle()

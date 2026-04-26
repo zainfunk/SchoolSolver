@@ -12,9 +12,10 @@ import { Input } from '@/components/ui/input'
 import {
   Users, Clock, MapPin, Globe, Crown, CheckCircle, XCircle,
   ClockIcon, Vote, Plus, Trash2, UserCheck, Pencil, Newspaper, Camera,
-  MessageCircle, Tv, Video, Link as LinkIcon, QrCode, Copy, ArrowLeft, Mail,
+  MessageCircle, Tv, Video, Link as LinkIcon, QrCode, Copy, ArrowLeft, Mail, DollarSign,
 } from 'lucide-react'
-import { User, Club, JoinRequest, LeadershipPosition, Poll, ClubEvent, ClubNews as ClubNewsType, SocialLink, SocialPlatform, MeetingTime, AttendanceRecord, AttendanceSession } from '@/types'
+import { motion } from 'framer-motion'
+import { User, Club, ClubDuesPayment, JoinRequest, LeadershipPosition, Poll, ClubEvent, ClubNews as ClubNewsType, SocialLink, SocialPlatform, MeetingTime, AttendanceRecord, AttendanceSession } from '@/types'
 import Avatar from '@/components/Avatar'
 import ConfirmDialog from '@/components/ConfirmDialog'
 import ClubNews from '@/components/clubs/ClubNews'
@@ -66,6 +67,7 @@ export default function ClubDetailPage({ params }: PageProps) {
   const [clubEvents, setClubEvents] = useState<ClubEvent[]>([])
   const [clubNews, setClubNews] = useState<ClubNewsType[]>([])
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([])
+  const [duesPayments, setDuesPayments] = useState<ClubDuesPayment[]>([])
 
   async function loadDetail(signal: AbortSignal) {
     const res = await fetch(`/api/school/clubs/${id}`, { cache: 'no-store', signal })
@@ -78,6 +80,7 @@ export default function ClubDetailPage({ params }: PageProps) {
       setClubEvents([])
       setClubNews([])
       setAttendanceRecords([])
+      setDuesPayments([])
       setClubLoading(false)
       return
     }
@@ -89,6 +92,7 @@ export default function ClubDetailPage({ params }: PageProps) {
     setClubEvents(detail.events)
     setClubNews(detail.news)
     setAttendanceRecords(detail.attendanceRecords)
+    setDuesPayments(detail.duesPayments ?? [])
     setClubLoading(false)
   }
 
@@ -189,6 +193,10 @@ export default function ClubDetailPage({ params }: PageProps) {
   // Manual attendance editing (advisor)
   const [manualDate, setManualDate] = useState(() => new Date().toISOString().split('T')[0])
   const [showManual, setShowManual] = useState(false)
+
+  // Dues editing (advisor)
+  const [editingDues, setEditingDues] = useState(false)
+  const [duesInput, setDuesInput] = useState('')
 
   // Confirmation dialog state
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -528,6 +536,34 @@ export default function ClubDetailPage({ params }: PageProps) {
     navigator.clipboard.writeText(getAttendUrl(session))
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  // --- Dues handlers ---
+  function startEditDues() {
+    setDuesInput((club.duesAmountCents / 100).toFixed(2))
+    setEditingDues(true)
+  }
+
+  async function saveDuesAmount() {
+    const dollars = parseFloat(duesInput)
+    if (Number.isNaN(dollars) || dollars < 0) {
+      toast.error('Enter a non-negative dollar amount')
+      return
+    }
+    const cents = Math.round(dollars * 100)
+    const ok = await patch({ action: 'set_dues_amount', amountCents: cents })
+    if (ok) {
+      setEditingDues(false)
+      toast.success('Dues amount updated')
+    }
+  }
+
+  async function toggleDuesPaid(memberId: string, currentlyPaid: boolean) {
+    const ok = await patch({
+      action: currentlyPaid ? 'mark_dues_unpaid' : 'mark_dues_paid',
+      memberId,
+    })
+    if (ok) toast.success(currentlyPaid ? 'Marked unpaid' : 'Marked paid')
   }
 
   // --- Manual attendance handlers ---
@@ -1316,6 +1352,137 @@ export default function ClubDetailPage({ params }: PageProps) {
             clubId={id}
             members={members.filter((m): m is User => Boolean(m)).map((m) => ({ id: m.id, name: m.name }))}
           />
+        )}
+
+        {/* Club Dues */}
+        {(isAdvisor || (isMember && club.duesAmountCents > 0)) && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+            className="bg-white rounded-2xl p-5 md:p-7 shadow-sm border border-slate-100">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+              <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2" style={{ fontFamily: 'var(--font-manrope)' }}>
+                <DollarSign className="w-5 h-5" />Club Dues
+              </h3>
+              {isAdvisor && !editingDues && (
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-semibold text-gray-700">
+                    {club.duesAmountCents > 0
+                      ? `$${(club.duesAmountCents / 100).toFixed(2)} / member`
+                      : 'No dues set'}
+                  </span>
+                  <button onClick={startEditDues}
+                    className="text-xs font-bold text-[#0058be] border border-blue-200 hover:bg-blue-50 rounded-lg px-2.5 py-1 transition-colors flex items-center gap-1">
+                    <Pencil className="w-3 h-3" />Edit amount
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {isAdvisor && editingDues && (
+              <div className="mb-5 flex flex-wrap items-center gap-3 p-4 bg-gray-50 rounded-xl">
+                <label className="text-xs font-semibold text-gray-600">Amount per member ($)</label>
+                <div className="flex items-center gap-1">
+                  <span className="text-sm text-gray-400">$</span>
+                  <Input type="number" min={0} step="0.01" value={duesInput}
+                    onChange={(e) => setDuesInput(e.target.value)} className="w-28 h-8 text-sm" />
+                </div>
+                <button onClick={saveDuesAmount}
+                  className="text-xs font-bold bg-[#0058be] text-white rounded-lg px-3 py-1.5 hover:bg-blue-700 transition-colors">
+                  Save
+                </button>
+                <button onClick={() => setEditingDues(false)} className="text-xs text-gray-400 hover:text-gray-600">
+                  Cancel
+                </button>
+              </div>
+            )}
+
+            {/* Advisor view — full table */}
+            {isAdvisor && (() => {
+              if (members.length === 0) {
+                return <p className="text-sm text-gray-400">No members yet.</p>
+              }
+              const paidById = new Map(duesPayments.filter((d) => d.paid).map((d) => [d.userId, d]))
+              const paidCount = paidById.size
+              const totalCollectedCents = Array.from(paidById.values()).reduce((s, d) => s + (d.amountCents || 0), 0)
+              const expectedCents = club.duesAmountCents * members.length
+              const pct = members.length > 0 ? Math.round((paidCount / members.length) * 100) : 0
+              return (
+                <>
+                  <div className="grid grid-cols-3 gap-3 mb-5">
+                    <div className="bg-emerald-50 rounded-xl p-3">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-700 mb-1">Paid</p>
+                      <p className="text-lg font-bold text-emerald-900">{paidCount} / {members.length}</p>
+                    </div>
+                    <div className="bg-blue-50 rounded-xl p-3">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-blue-700 mb-1">Collected</p>
+                      <p className="text-lg font-bold text-blue-900">${(totalCollectedCents / 100).toFixed(2)}</p>
+                    </div>
+                    <div className="bg-gray-50 rounded-xl p-3">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1">Expected</p>
+                      <p className="text-lg font-bold text-gray-700">${(expectedCents / 100).toFixed(2)}</p>
+                    </div>
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-full h-1.5 mb-5">
+                    <div className="h-1.5 rounded-full bg-emerald-500 transition-all" style={{ width: `${pct}%` }} />
+                  </div>
+                  <div className="space-y-0">
+                    {members.map((m) => {
+                      if (!m) return null
+                      const payment = paidById.get(m.id)
+                      const isPaid = Boolean(payment)
+                      return (
+                        <div key={m.id} className="flex items-center justify-between gap-3 py-3 border-b border-gray-50 last:border-0">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <Avatar name={m.name} size="sm" />
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-gray-800 truncate">{m.name}</p>
+                              {isPaid && payment?.paidAt && (
+                                <p className="text-[10px] text-gray-400">Paid {formatTime(payment.paidAt)}</p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full ${isPaid ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                              {isPaid ? 'Paid' : 'Unpaid'}
+                            </span>
+                            <button onClick={() => toggleDuesPaid(m.id, isPaid)}
+                              className={`text-xs font-bold rounded-lg px-3 py-1.5 transition-colors flex items-center gap-1 ${isPaid ? 'border border-gray-200 text-gray-600 hover:bg-gray-50' : 'bg-emerald-500 text-white hover:bg-emerald-600'}`}>
+                              {isPaid ? 'Mark unpaid' : 'Mark paid'}
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
+              )
+            })()}
+
+            {/* Member view — own status */}
+            {!isAdvisor && isMember && (() => {
+              const myPayment = duesPayments.find((d) => d.userId === currentUser.id)
+              const myPaid = Boolean(myPayment?.paid)
+              return (
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">Amount</p>
+                    <p className="text-2xl font-bold text-gray-900">${(club.duesAmountCents / 100).toFixed(2)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm text-gray-500 mb-1">Status</p>
+                    <span className={`text-sm font-bold uppercase tracking-widest px-3 py-1 rounded-full ${myPaid ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                      {myPaid ? 'Paid' : 'Unpaid'}
+                    </span>
+                    {myPaid && myPayment?.paidAt && (
+                      <p className="text-[10px] text-gray-400 mt-1">Recorded {formatTime(myPayment.paidAt)}</p>
+                    )}
+                  </div>
+                </div>
+              )
+            })()}
+          </motion.div>
         )}
 
         {/* Elections */}

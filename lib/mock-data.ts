@@ -35,6 +35,7 @@ export const CLUBS: Club[] = [
     tags: ['STEM', 'Engineering', 'Competition'],
     createdAt: '2024-09-01',
     autoAccept: true,
+    duesAmountCents: 0,
   },
   {
     id: 'club-drama',
@@ -59,6 +60,7 @@ export const CLUBS: Club[] = [
     tags: ['Arts', 'Performance', 'Theatre'],
     createdAt: '2024-09-01',
     autoAccept: false,
+    duesAmountCents: 0,
   },
   {
     id: 'club-chess',
@@ -80,6 +82,7 @@ export const CLUBS: Club[] = [
     tags: ['Strategy', 'Competition', 'Games'],
     createdAt: '2024-09-01',
     autoAccept: true,
+    duesAmountCents: 0,
   },
   {
     id: 'club-environment',
@@ -104,6 +107,7 @@ export const CLUBS: Club[] = [
     tags: ['Environment', 'Community', 'Activism'],
     createdAt: '2024-09-01',
     autoAccept: true,
+    duesAmountCents: 0,
   },
 ]
 

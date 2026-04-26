@@ -2,11 +2,11 @@
 -- RESET_AND_APPLY.sql -- one-shot clean apply
 -- ============================================================================
 --
--- 1. Removes Supabase migration-tracker rows for versions 0000..0006
---    (does NOT touch any other rows -- only our seven entries).
+-- 1. Removes Supabase migration-tracker rows for versions 0000..0007
+--    (does NOT touch any other rows -- only our eight entries).
 -- 2. Re-runs every forward migration. All are idempotent, so this is safe
 --    on a DB where the schema is partially or fully applied already.
--- 3. Records 0000..0006 in the tracker so future `supabase db push` calls
+-- 3. Records 0000..0007 in the tracker so future `supabase db push` calls
 --    won't try to re-run them.
 --
 -- Paste this entire file into the Supabase SQL Editor (NOT the Migrations
@@ -18,7 +18,7 @@
 -- ============================================================================
 
 DELETE FROM supabase_migrations.schema_migrations
-WHERE version IN ('0000','0001','0002','0003','0004','0005','0006');
+WHERE version IN ('0000','0001','0002','0003','0004','0005','0006','0007');
 
 -- ============================================================================
 -- APPLY_ALL.sql  --  one-shot script combining every forward migration
@@ -28,7 +28,7 @@ WHERE version IN ('0000','0001','0002','0003','0004','0005','0006');
 -- IF NOT EXISTS, every policy is dropped before being re-created.
 -- Re-running the script after a partial success is safe.
 -- 
--- Generated from migrations 0000..0006.
+-- Generated from migrations 0000..0007.
 -- ============================================================================
 
 
@@ -60,6 +60,7 @@ create table if not exists clubs (
   auto_accept boolean default false,
   tags text[] default '{}',
   event_creator_ids text[] default '{}',
+  dues_amount_cents int not null default 0,
   created_at text not null
 );
 
@@ -2152,7 +2153,55 @@ commit;
 
 
 -- ============================================================================
--- STEP 3: re-record all seven versions so future `supabase db push` is happy.
+-- BEGIN 0007_club_dues.sql
+-- ============================================================================
+-- 0007_club_dues.sql -- per-club dues amount + per-member payments table.
+
+begin;
+
+alter table clubs
+  add column if not exists dues_amount_cents int not null default 0;
+
+create table if not exists club_dues_payments (
+  id            text primary key,
+  club_id       text not null references clubs(id) on delete cascade,
+  user_id       text not null references users(id) on delete cascade,
+  paid          boolean not null default false,
+  paid_at       text,
+  amount_cents  int not null default 0,
+  marked_by     text references users(id) on delete set null,
+  updated_at    text not null,
+  unique(club_id, user_id)
+);
+
+create index if not exists club_dues_payments_club_idx on club_dues_payments (club_id);
+create index if not exists club_dues_payments_user_idx on club_dues_payments (user_id);
+
+alter table club_dues_payments enable row level security;
+
+drop policy if exists club_dues_payments_select on club_dues_payments;
+create policy club_dues_payments_select on club_dues_payments
+  for select to authenticated
+  using (
+    app.club_manager(club_id)
+    or (app.club_in_scope(club_id) and user_id = app.current_user_id())
+  );
+
+drop policy if exists club_dues_payments_manage on club_dues_payments;
+create policy club_dues_payments_manage on club_dues_payments
+  for all to authenticated
+  using (app.club_manager(club_id))
+  with check (app.club_manager(club_id));
+
+commit;
+
+-- ============================================================================
+-- END 0007_club_dues.sql
+-- ============================================================================
+
+
+-- ============================================================================
+-- STEP 3: re-record all eight versions so future `supabase db push` is happy.
 -- ============================================================================
 
 INSERT INTO supabase_migrations.schema_migrations (version, name, statements)
@@ -2163,13 +2212,14 @@ VALUES
   ('0003', 'pending_school_onboarding', ARRAY[]::text[]),
   ('0004', 'secret_ballot',             ARRAY[]::text[]),
   ('0005', 'invite_code_binding',       ARRAY[]::text[]),
-  ('0006', 'audit_log',                 ARRAY[]::text[])
+  ('0006', 'audit_log',                 ARRAY[]::text[]),
+  ('0007', 'club_dues',                 ARRAY[]::text[])
 ON CONFLICT (version) DO NOTHING;
 
 -- ============================================================================
 -- DONE. To verify:
 --   SELECT version, name FROM supabase_migrations.schema_migrations
---   WHERE version IN ('0000','0001','0002','0003','0004','0005','0006')
+--   WHERE version IN ('0000','0001','0002','0003','0004','0005','0006','0007')
 --   ORDER BY version;
 --
 -- After this, run `npm run rotate-tokens:prod` (with SUPABASE_URL and

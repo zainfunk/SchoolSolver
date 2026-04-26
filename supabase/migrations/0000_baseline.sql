@@ -23,6 +23,7 @@ create table if not exists clubs (
   auto_accept boolean default false,
   tags text[] default '{}',
   event_creator_ids text[] default '{}',
+  dues_amount_cents int not null default 0,
   created_at text not null
 );
 

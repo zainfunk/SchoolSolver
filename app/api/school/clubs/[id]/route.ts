@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server'
 import { createServiceClient } from '@/lib/supabase'
 import {
   Club,
+  ClubDuesPayment,
   ClubEvent,
   ClubNews,
   JoinRequest,
@@ -51,7 +52,7 @@ export async function GET(_request: NextRequest, { params }: PageProps) {
 
   const { data: clubRow } = await db
     .from('clubs')
-    .select('id, name, description, icon_url, capacity, advisor_id, tags, event_creator_ids, auto_accept, created_at')
+    .select('id, name, description, icon_url, capacity, advisor_id, tags, event_creator_ids, auto_accept, dues_amount_cents, created_at')
     .eq('id', clubId)
     .eq('school_id', schoolId)
     .maybeSingle()
@@ -61,7 +62,7 @@ export async function GET(_request: NextRequest, { params }: PageProps) {
   }
 
   // Enrich club with memberships and leadership
-  const [membershipRes, leadershipRes, requestRes, socialRes, meetingRes, eventRes, newsRes, pollRes, attendanceRecordsRes, attendanceSessionsRes] = await Promise.all([
+  const [membershipRes, leadershipRes, requestRes, socialRes, meetingRes, eventRes, newsRes, pollRes, attendanceRecordsRes, attendanceSessionsRes, duesRes] = await Promise.all([
     db.from('memberships').select('id, club_id, user_id, joined_at').eq('club_id', clubId),
     db.from('leadership_positions').select('id, club_id, title, user_id').eq('club_id', clubId),
     db.from('join_requests').select('id, club_id, user_id, requested_at, status').eq('club_id', clubId),
@@ -72,6 +73,7 @@ export async function GET(_request: NextRequest, { params }: PageProps) {
     db.from('polls').select('id, club_id, position_title, created_at, is_open, poll_candidates(user_id), poll_votes(candidate_user_id, voter_user_id)').eq('club_id', clubId),
     db.from('attendance_records').select('*').eq('club_id', clubId),
     db.from('attendance_sessions').select('*').eq('club_id', clubId),
+    db.from('club_dues_payments').select('id, club_id, user_id, paid, paid_at, amount_cents, marked_by, updated_at').eq('club_id', clubId),
   ])
 
   const memberIds = (membershipRes.data ?? []).map((r) => r.user_id)
@@ -102,7 +104,33 @@ export async function GET(_request: NextRequest, { params }: PageProps) {
     tags: clubRow.tags ?? [],
     createdAt: clubRow.created_at,
     autoAccept: clubRow.auto_accept ?? false,
+    duesAmountCents: clubRow.dues_amount_cents ?? 0,
   }
+
+  const isClubManager =
+    clubRow.advisor_id === userId
+
+  // Members see only their own dues row; advisors/admins see all.
+  const { data: callerRoleRow } = await db
+    .from('users')
+    .select('role')
+    .eq('id', userId)
+    .maybeSingle()
+  const callerRole = (callerRoleRow?.role ?? 'student') as Role
+  const canSeeAllDues = isClubManager || callerRole === 'admin' || callerRole === 'superadmin'
+
+  const duesPayments: ClubDuesPayment[] = (duesRes.data ?? [])
+    .filter((r) => canSeeAllDues || r.user_id === userId)
+    .map((r) => ({
+      id: r.id,
+      clubId: r.club_id,
+      userId: r.user_id,
+      paid: r.paid,
+      paidAt: r.paid_at ?? undefined,
+      amountCents: r.amount_cents ?? 0,
+      markedBy: r.marked_by ?? undefined,
+      updatedAt: r.updated_at,
+    }))
 
   const memberships: Membership[] = (membershipRes.data ?? []).map((r) => ({
     id: r.id,
@@ -232,6 +260,7 @@ export async function GET(_request: NextRequest, { params }: PageProps) {
     polls,
     attendanceRecords,
     attendanceSessions,
+    duesPayments,
     usersById,
   })
 }
@@ -254,7 +283,7 @@ export async function PATCH(request: NextRequest, { params }: PageProps) {
 
   const { data: clubRow } = await db
     .from('clubs')
-    .select('id, advisor_id, capacity, auto_accept, event_creator_ids')
+    .select('id, advisor_id, capacity, auto_accept, event_creator_ids, dues_amount_cents')
     .eq('id', clubId)
     .eq('school_id', schoolId)
     .maybeSingle()
@@ -537,6 +566,47 @@ export async function PATCH(request: NextRequest, { params }: PageProps) {
       await db.from('leadership_positions').insert({ id: `lp-${pollId}`, club_id: clubId, title: pollRow2.position_title, user_id: winner.user_id })
     }
     await db.from('polls').update({ is_open: false }).eq('id', pollId)
+    return NextResponse.json({ ok: true })
+  }
+
+  if (action === 'set_dues_amount') {
+    if (!isManager) return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
+    const { amountCents } = body as { amountCents: number }
+    const safeAmount = Math.max(0, Math.min(1_000_000, Math.round(amountCents ?? 0)))
+    await db.from('clubs').update({ dues_amount_cents: safeAmount }).eq('id', clubId)
+    return NextResponse.json({ ok: true })
+  }
+
+  if (action === 'mark_dues_paid' || action === 'mark_dues_unpaid') {
+    if (!isManager) return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
+    const { memberId } = body as { memberId: string }
+    if (!memberId) return NextResponse.json({ error: 'memberId required' }, { status: 400 })
+
+    // Verify the target user is a member of this club
+    const { data: membership } = await db
+      .from('memberships')
+      .select('id')
+      .eq('club_id', clubId)
+      .eq('user_id', memberId)
+      .maybeSingle()
+    if (!membership) return NextResponse.json({ error: 'User is not a club member' }, { status: 400 })
+
+    const paid = action === 'mark_dues_paid'
+    const now = new Date().toISOString()
+    const rowId = `dues-${clubId}-${memberId}`
+    await db.from('club_dues_payments').upsert(
+      {
+        id: rowId,
+        club_id: clubId,
+        user_id: memberId,
+        paid,
+        paid_at: paid ? now : null,
+        amount_cents: paid ? (clubRow as { dues_amount_cents?: number }).dues_amount_cents ?? 0 : 0,
+        marked_by: userId,
+        updated_at: now,
+      },
+      { onConflict: 'club_id,user_id' }
+    )
     return NextResponse.json({ ok: true })
   }
 
