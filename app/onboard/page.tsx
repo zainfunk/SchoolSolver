@@ -3,6 +3,9 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { School, Building2, Mail, User, MapPin } from 'lucide-react'
+import { AnimatePresence } from 'framer-motion'
+import RocketLoader from '@/components/ui/RocketLoader'
+import { FadeIn } from '@/components/ui/FadeIn'
 
 export default function OnboardPage() {
   const router = useRouter()
@@ -13,6 +16,7 @@ export default function OnboardPage() {
     contactEmail: '',
   })
   const [loading, setLoading] = useState(false)
+  const [launched, setLaunched] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   function update(field: keyof typeof form, value: string) {
@@ -32,17 +36,30 @@ export default function OnboardPage() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Something went wrong')
-      router.push('/dashboard')
+
+      // Hold the rocket loader briefly so the success state lands.
+      setLaunched(true)
+      setTimeout(() => router.push('/dashboard'), 1100)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong')
-    } finally {
       setLoading(false)
     }
   }
 
   return (
     <div className="min-h-screen bg-[#f8f9fa] flex items-center justify-center p-6">
-      <div className="w-full max-w-lg">
+      <AnimatePresence>
+        {loading && (
+          <RocketLoader
+            open
+            done={launched}
+            label={launched ? 'Welcome aboard!' : 'Launching your school…'}
+            subLabel={launched ? 'Spinning up your dashboard.' : 'Provisioning invite codes and dashboards.'}
+          />
+        )}
+      </AnimatePresence>
+
+      <FadeIn className="w-full max-w-lg" y={20}>
         {/* Logo / header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-14 h-14 bg-black rounded-2xl mb-4">
@@ -139,7 +156,7 @@ export default function OnboardPage() {
             <a href="/join" className="text-gray-700 underline">Join here</a>
           </p>
         </form>
-      </div>
+      </FadeIn>
     </div>
   )
 }

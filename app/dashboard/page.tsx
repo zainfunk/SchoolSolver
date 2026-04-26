@@ -6,6 +6,7 @@ import { useMockAuth } from '@/lib/mock-auth'
 import { supabase } from '@/lib/supabase'
 import { Users, BookOpen, Pin, Calendar, MessageSquare, CheckCircle, Clock, AlertCircle, ChevronDown, ChevronUp, ArrowRight } from 'lucide-react'
 import { Skeleton } from '@/components/ui/Skeleton'
+import { FadeIn, Stagger } from '@/components/ui/FadeIn'
 import type { Club, ClubEvent, ClubNews, JoinRequest } from '@/types'
 import { toast } from 'sonner'
 import { cachedFetch, invalidateCachePrefix } from '@/lib/fetch-cache'
@@ -166,7 +167,7 @@ export default function DashboardPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-2 sm:px-0">
-      <section className="mb-10">
+      <FadeIn className="mb-10" y={20}>
         <div className="p-6 rounded-xl" style={{ background: 'rgba(33, 112, 228, 0.08)', border: '1px solid rgba(0, 88, 190, 0.1)' }}>
           <h2 className="text-3xl font-extrabold text-[#191c1d] tracking-tight leading-none mb-2" style={{ fontFamily: 'var(--font-manrope, sans-serif)' }}>
             Hi, {firstName}!
@@ -215,7 +216,7 @@ export default function DashboardPage() {
             ))}
           </div>
         )}
-      </section>
+      </FadeIn>
 
       {loadError && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-5 py-4 flex items-start gap-3 mb-6">
@@ -245,7 +246,7 @@ export default function DashboardPage() {
             ))}
           </>
         ) : myClubs.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-xl border">
+          <FadeIn className="text-center py-20 bg-white rounded-xl border">
             {currentUser.role === 'advisor'
               ? <><Users className="w-8 h-8 text-gray-300 mx-auto mb-3" /><p className="text-gray-500 font-medium">You are not assigned as advisor to any clubs yet.</p></>
               : <div className="max-w-sm mx-auto">
@@ -265,9 +266,13 @@ export default function DashboardPage() {
                   </Link>
                 </div>
             }
-          </div>
+          </FadeIn>
         ) : (
-          myClubs.map((club) => <ClubCard key={club.id} club={club} />)
+          <Stagger className="flex flex-col gap-6" stagger={0.07}>
+            {myClubs.map((club) => (
+              <Stagger.Item key={club.id}><ClubCard club={club} /></Stagger.Item>
+            ))}
+          </Stagger>
         )}
 
         <div className="mt-8 rounded-xl p-8 flex flex-col items-center text-center" style={{ border: '2px dashed rgba(194, 198, 214, 0.4)' }}>
