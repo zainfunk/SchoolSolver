@@ -274,6 +274,207 @@ function InviteModal({ onClose }: { onClose: () => void }) {
 }
 
 /* ------------------------------------------------------------------ */
+/*  AddSchoolModal                                                     */
+/* ------------------------------------------------------------------ */
+
+function AddSchoolModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+  const [form, setForm] = useState({ name: '', district: '', contactName: '', contactEmail: '' })
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [created, setCreated] = useState<{
+    name: string
+    contactEmail: string
+    setupLink: string
+    studentCode?: string
+    advisorCode?: string
+    adminCode?: string
+  } | null>(null)
+  const [copiedKey, setCopiedKey] = useState<string | null>(null)
+
+  function update(field: keyof typeof form, value: string) {
+    setForm(prev => ({ ...prev, [field]: value }))
+  }
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/superadmin/schools', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? `Server error (${res.status})`)
+      setCreated({
+        name: data.school.name,
+        contactEmail: data.school.contactEmail,
+        setupLink: `${window.location.origin}${data.setupLink}`,
+        studentCode: data.school.studentInviteCode,
+        advisorCode: data.school.advisorInviteCode,
+        adminCode: data.school.adminInviteCode,
+      })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function copy(value: string, key: string) {
+    await navigator.clipboard.writeText(value)
+    setCopiedKey(key)
+    setTimeout(() => setCopiedKey(k => (k === key ? null : k)), 2000)
+  }
+
+  function close() {
+    if (created) onCreated()
+    onClose()
+  }
+
+  const mailtoLink = created
+    ? `mailto:${encodeURIComponent(created.contactEmail)}?subject=${encodeURIComponent(`Your ClubIt setup link for ${created.name}`)}&body=${encodeURIComponent(
+        `Hi ${form.contactName || 'there'},\n\nYour ClubIt account for ${created.name} is ready to set up. Open the link below to view your invite codes and complete setup:\n\n${created.setupLink}\n\nThis is a one-time link — please don't share it publicly.\n\n— The ClubIt team`
+      )}`
+    : ''
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={close}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-base font-semibold text-gray-900">{created ? 'School created' : 'Add a school'}</h2>
+          <button onClick={close} className="text-gray-400 hover:text-gray-700 transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {!created ? (
+          <form onSubmit={submit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">School name</label>
+              <input
+                type="text"
+                required
+                value={form.name}
+                onChange={e => update('name', e.target.value)}
+                placeholder="Oakridge High School"
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-gray-400"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                District <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <input
+                type="text"
+                value={form.district}
+                onChange={e => update('district', e.target.value)}
+                placeholder="Oakridge Unified"
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-gray-400"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Primary contact name</label>
+              <input
+                type="text"
+                required
+                value={form.contactName}
+                onChange={e => update('contactName', e.target.value)}
+                placeholder="Principal or staff contact"
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-gray-400"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Contact email</label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="email"
+                  required
+                  value={form.contactEmail}
+                  onChange={e => update('contactEmail', e.target.value)}
+                  placeholder="principal@oakridge.edu"
+                  className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-gray-400"
+                />
+              </div>
+              <p className="text-xs text-gray-400 mt-1.5">
+                The school is created as active immediately. Invite codes and a setup link are generated for you to share.
+              </p>
+            </div>
+            {error && <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3">{error}</p>}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-black text-white py-2.5 rounded-xl text-sm font-medium hover:bg-gray-800 disabled:opacity-50 transition-colors"
+            >
+              {loading ? 'Creating…' : 'Create school'}
+            </button>
+          </form>
+        ) : (
+          <div className="space-y-4">
+            <div className="bg-green-50 border border-green-100 rounded-xl px-4 py-3 flex items-start gap-2">
+              <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
+              <p className="text-sm text-green-800">
+                <span className="font-semibold">{created.name}</span> is live. Share the setup link with{' '}
+                <span className="font-medium">{created.contactEmail}</span>.
+              </p>
+            </div>
+
+            <div className="bg-gray-50 rounded-xl p-4 space-y-1.5">
+              <p className="text-xs text-gray-500 mb-1">Setup link</p>
+              <p className="text-xs font-mono text-gray-700 break-all leading-relaxed">{created.setupLink}</p>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 text-xs">
+              {([
+                ['Student', created.studentCode, 'student'],
+                ['Advisor', created.advisorCode, 'advisor'],
+                ['Admin', created.adminCode, 'admin'],
+              ] as const).map(([label, code, key]) => code && (
+                <button
+                  key={key}
+                  onClick={() => copy(code, key)}
+                  className="bg-gray-50 rounded-lg p-2 hover:bg-gray-100 transition-colors text-left"
+                  title={`Copy ${label} code`}
+                >
+                  <p className="text-gray-400">{label}</p>
+                  <code className="font-mono font-bold text-gray-800 text-[11px]">{code}</code>
+                  <p className="text-[10px] text-blue-500 mt-0.5">{copiedKey === key ? 'Copied' : 'Copy'}</p>
+                </button>
+              ))}
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => copy(created.setupLink, 'link')}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                {copiedKey === 'link' ? <CheckCircle className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                {copiedKey === 'link' ? 'Copied!' : 'Copy link'}
+              </button>
+              <a
+                href={mailtoLink}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-black text-white rounded-xl text-sm font-medium hover:bg-gray-800 transition-colors"
+              >
+                <Mail className="w-4 h-4" />
+                Email
+              </a>
+            </div>
+            <button
+              onClick={close}
+              className="w-full text-sm text-gray-500 hover:text-gray-800 transition-colors py-1"
+            >
+              Done
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
 /*  SchoolDetailModal                                                  */
 /* ------------------------------------------------------------------ */
 
@@ -1283,6 +1484,7 @@ export default function SuperAdminPage() {
   const [filter, setFilter] = useState<Filter>('all')
   const [loading, setLoading] = useState(true)
   const [showInvite, setShowInvite] = useState(false)
+  const [showAddSchool, setShowAddSchool] = useState(false)
   const [detailSchoolId, setDetailSchoolId] = useState<string | null>(null)
 
   async function loadSchools() {
@@ -1336,6 +1538,12 @@ export default function SuperAdminPage() {
     <div className="max-w-5xl mx-auto">
       {/* Modals */}
       {devQuickInviteEnabled && showInvite && <InviteModal onClose={() => setShowInvite(false)} />}
+      {showAddSchool && (
+        <AddSchoolModal
+          onClose={() => setShowAddSchool(false)}
+          onCreated={() => { setShowAddSchool(false); loadSchools() }}
+        />
+      )}
       {detailSchoolId && (
         <SchoolDetailModal
           schoolId={detailSchoolId}
@@ -1358,10 +1566,17 @@ export default function SuperAdminPage() {
             <RefreshCw className="w-4 h-4" />
             Refresh
           </button>
+          <button
+            onClick={() => setShowAddSchool(true)}
+            className="flex items-center gap-1.5 text-sm bg-black text-white px-4 py-2 rounded-xl hover:bg-gray-800 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Add school
+          </button>
           {devQuickInviteEnabled && (
             <button
               onClick={() => setShowInvite(true)}
-              className="flex items-center gap-1.5 text-sm bg-black text-white px-4 py-2 rounded-xl hover:bg-gray-800 transition-colors"
+              className="flex items-center gap-1.5 text-sm border border-gray-200 text-gray-700 px-4 py-2 rounded-xl hover:bg-gray-50 transition-colors"
             >
               <Plus className="w-4 h-4" />
               Quick invite (Dev)

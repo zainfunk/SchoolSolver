@@ -34,6 +34,7 @@ export type AuditAction =
   | 'user.profile_changed'
   // school lifecycle
   | 'school.requested'
+  | 'school.created'
   | 'school.approved'
   | 'school.rejected'
   | 'school.suspended'
