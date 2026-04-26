@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useClerk } from '@clerk/nextjs'
 import { useMockAuth } from '@/lib/mock-auth'
-import { Sparkles, LayoutDashboard, Calendar, FileText, Compass, User, ShieldCheck, MessageSquare, Settings, LogOut, Globe, CreditCard, X, Trophy } from 'lucide-react'
+import { Sparkles, LayoutDashboard, Calendar, FileText, Compass, User, ShieldCheck, MessageSquare, Settings, LogOut, Globe, X, Trophy } from 'lucide-react'
 import { fetchAdminSettings, getAdminSettings } from '@/lib/settings-store'
 import Avatar from '@/components/Avatar'
 import { HelpButton } from '@/components/HelpTour'
@@ -20,7 +20,6 @@ const NAV_ITEMS = [
   { href: '/leaderboard', icon: Trophy,         label: 'Leaderboard', roles: ['student', 'advisor', 'admin'],                tourId: 'tour-nav-leaderboard' },
   { href: '/profile',    icon: User,            label: 'Profile',    roles: ['student', 'advisor', 'admin', 'superadmin'],  tourId: 'tour-nav-profile' },
   { href: '/admin',      icon: ShieldCheck,     label: 'Admin',      roles: ['admin'],                                      tourId: 'tour-nav-admin' },
-  { href: '/admin/billing', icon: CreditCard,   label: 'Billing',    roles: ['admin'],                                      tourId: 'tour-nav-billing' },
 ]
 
 export default function Sidebar() {
@@ -48,7 +47,6 @@ export default function Sidebar() {
   function isActive(href: string) {
     if (href === '/profile') return pathname === '/profile' || pathname.startsWith('/profile/')
     if (href === '/clubs') return pathname === '/clubs' || pathname.startsWith('/clubs/')
-    if (href === '/admin/billing') return pathname === '/admin/billing'
     if (href === '/admin') return pathname === '/admin'
     return pathname === href || pathname.startsWith(href + '/')
   }

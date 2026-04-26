@@ -1,21 +1,34 @@
-import { randomBytes, randomUUID } from 'node:crypto'
+import { randomBytes, randomInt, randomUUID } from 'node:crypto'
 import { School } from '@/types'
 
 // ── Invite code generation ────────────────────────────────────────────────────
 //
-// All token generators below use Node's CSPRNG (crypto.randomBytes), NOT
-// Math.random. Math.random in V8 is xorshift128+ — non-cryptographic and
-// trivially reverse-engineerable from a small number of observed outputs.
-// See: docs/security/ClubIt-Security-Assessment.md finding C-7.
+// All token generators below use Node's CSPRNG (crypto.randomBytes /
+// randomInt), NOT Math.random. Math.random in V8 is xorshift128+ —
+// non-cryptographic and trivially reverse-engineerable from a small
+// number of observed outputs. See: docs/security/ClubIt-Security-Assessment.md
+// finding C-7.
+
+// Confusion-free uppercase alphabet: 32 chars (2^5), no 0/O/1/I/L which
+// students miscopy. 8 random chars => 32^8 = ~1.1e12 = 40 bits of entropy.
+// /api/join is rate-limited (5/60s per user); brute-forcing one code at
+// that rate takes roughly 200,000 years on average. Admin and advisor
+// codes can be rotated by a superadmin if a leak is suspected.
+const SAFE_ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ'
+
+function randomToken(length: number): string {
+  let out = ''
+  for (let i = 0; i < length; i++) {
+    out += SAFE_ALPHABET[randomInt(0, SAFE_ALPHABET.length)]
+  }
+  return out
+}
 
 export function generateInviteCode(prefix: 'STU' | 'ADM' | 'ADV'): string {
-  // 16 bytes -> 22 base64url chars -> 128 bits of entropy. Meets the
-  // assessment §9 item 3 requirement (>=64 bits, ideally not derived from
-  // a predictable PRNG). Format: <PFX>-<22 base64url chars>, e.g.
-  //   STU-aBcDeFgH1jKlMnOpQrStUv
-  // Three-letter prefix is preserved so admins can recognize a code's
-  // role at a glance; everything after the dash is opaque.
-  return `${prefix}-${randomBytes(16).toString('base64url')}`
+  // Format: <PFX>-<8 chars>, e.g. STU-A2B4C6D8 — 12 characters total,
+  // shorter than the previous 26-char base64url codes so students can
+  // hand-type without errors.
+  return `${prefix}-${randomToken(8)}`
 }
 
 export function generateSetupToken(): string {

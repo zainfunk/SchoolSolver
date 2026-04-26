@@ -15,7 +15,6 @@ const PAGE_TITLES: Record<string, string> = {
   '/elections':      'Elections & Forms',
   '/profile':        'Profile',
   '/admin':          'Admin Panel',
-  '/admin/billing':  'Billing',
   '/dev/school-lab': 'School Lab',
   '/demo':           'Demo Data',
   '/settings':       'Settings',
@@ -23,7 +22,7 @@ const PAGE_TITLES: Record<string, string> = {
 }
 
 function usePageTitle(pathname: string) {
-  // Check longest match first (e.g. /admin/billing before /admin)
+  // Check longest match first so nested paths win over their parents.
   const sorted = Object.entries(PAGE_TITLES).sort((a, b) => b[0].length - a[0].length)
   const entry = sorted.find(([key]) => pathname === key || pathname.startsWith(key + '/'))
   return entry?.[1] ?? 'ClubIt'
